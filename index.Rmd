@@ -1,6 +1,6 @@
 ---
-title: "I have the best titles"
-author: Your name here
+title: "I have better titles"
+author: Mitchell Htichcock
 subtitle: Subtitle here if desired
 ---
 
