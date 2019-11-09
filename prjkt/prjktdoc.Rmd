@@ -1,0 +1,53 @@
+---
+title: "prjktdoc"
+author: "Mitchell C Hitchcock"
+date: "11/3/2019"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r test, echo=FALSE}
+
+library(shiny)
+library(datasets)
+
+ui <- shinyUI(fluidPage(
+
+     fileInput('file1', 'Choose CSV File',
+                                   accept=c('text/csv', 
+                                            'text/comma-separated-values,text/plain', 
+                                            '.csv')),
+   
+   
+ )
+)
+
+server <- shinyServer(function(input, output, session) {
+      # added "session" because updateSelectInput requires it
+    options(shiny.maxRequestSize=30*1024^2)
+    
+    data <- reactive({ 
+        req(input$file1) ## ?req #  require that the input is available
+        
+        inFile <- input$file1 
+        
+        # tested with a following dataset: write.csv(mtcars, "mtcars.csv")
+        # and                              write.csv(iris, "iris.csv")
+        df <- read.csv(inFile$datapath, header = TRUE)
+        return(df)
+    })
+  
+})
+shinyApp(ui = ui, server = server)
+
+```
+
+```{r}
+
+        
+```
+

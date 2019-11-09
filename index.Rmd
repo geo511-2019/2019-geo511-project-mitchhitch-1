@@ -1,88 +1,34 @@
 ---
-title: "I have better titles"
+title: "Tool for identifing replicate field study locations"
 author: Mitchell Htichcock
-subtitle: Subtitle here if desired
+subtitle: "Demonstrated with Erie County brownfields"
+output: html
 ---
 
 # Introduction
-My really awesome and complete introduction will go here.  
+
+CURRENTLY IN ODT DOC FOR CITATION MANAGEMENT
+
+
+
+
 
 # Materials and methods
 
-Narrative and most code will go here.  Describe what you are doing and show how to do it (with code).
-
-You can do bullets like this:
-
-* The first most important thing
-* The second most important thing
-* The third most important thing
-
-You can do numbers like this:
-
-1. The first most important thing
-2. The second most important thing
-3. The third most important thing
-
-See [http://rmarkdown.rstudio.com/](http://rmarkdown.rstudio.com/) for all the amazing things you can do.
+SHINY CODE GOES HERE
 
 
-Here's my first code chunk.
-```{r}
-1+2
-```
-
-Load any required packages in a code chunk (you may need to install some packages):
-
-```{r, message=F, warning=F}
-library(tidyverse)
-library(leaflet)
-library(kableExtra)
-knitr::opts_chunk$set(cache=TRUE)  # cache the results for quick compiling
-```
-
-## Download and clean all required data
-```{r}
-n=20
-data=data.frame(x=runif(n,-180,180),
-                y=runif(n,-60,60),
-                size = runif(n, 5, 20),
-                category = factor(
-                  sample(letters[1:5], n, replace = TRUE)
-                  ),
-                value = rnorm(n))
-```
-
-```{r, results='asis'}
-data %>% 
-  slice(1:10) %>% #show only 1:n rows
-  kable(digits=2,align="c")%>% #make table and round to two digits
-  kable_styling(bootstrap_options = 
-                  c("striped", "hover", "condensed", "responsive")) #apply other formatting
-```
-
-Add any additional processing steps here.
 
 # Results
 
-Show tables, plots, etc. and describe them.
 
-```{r, fig.width=6, fig.height=3, fig.cap="Map of completely random data"}
-m <- leaflet(data) %>% 
-  addTiles() %>% 
-  addCircleMarkers(~x, ~y, radius = ~size,color = ~as.factor(category)) %>% 
-  addPopups(~x[2], ~y[2], "Random popup")
-m  # a map with the default OSM tile layer
-```
+leaflet map and table
 
 
-```{r}
-data %>% 
-  ggplot(aes(x=x,y=y,col=category))+
-  geom_point()
-```
 
 # Conclusions
 
-What have you learned?  Are there any broader implications?
 
 # References
+
+PASTE IN FROM CITATION GENERATED IN ODT DOC
