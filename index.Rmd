@@ -7,9 +7,7 @@ output: html
 
 # Introduction
 
-CURRENTLY IN ODT DOC FOR CITATION MANAGEMENT
-
-
+Replicated experiments are well known to have the highest power for statistical inference. However, this has rarely been properly implemented and numerous techniques have been devised to alleviate this challenge and to avoid psuedoreplication (Eberhardt and Thomas 1991).   Due to the power (lower typeII error) of large replicate studies it would be desirable to develop a method for conducting such studies in field experiments so as to derive stronger inferences. Additional replicates is of equal interest to Bayesian analysis as it is to frequentest but discussion of either is outside the scope of this work save that it benefits either.  The purpose of this project is to develop a tool for alleviating the first step which is identifying plausible replicate sites by using existing locations. It is possible to deal with uncontrolled variables through large numbers of replicates but the more uncontrolled and higher variation the variables are the more replicates are needed. The tool developed hear uses the large amounts of environmental data widely available to filter through locations and identify a desired number of replicates which are most similar given a set of variables. This tool is designed to be dynamic by allowing for multiple spatial data sets to be imported and desired variables to be filtered for. 
 
 
 
@@ -31,4 +29,4 @@ leaflet map and table
 
 # References
 
-PASTE IN FROM CITATION GENERATED IN ODT DOC
+Eberhardt, L. L., and J. M. Thomas. 1991. Designing Environmental Field Studies. Ecological Monographs 61:53–73.
