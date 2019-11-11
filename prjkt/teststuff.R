@@ -10,8 +10,8 @@ library(nngeo)#st_nn
 
 
 ####user input data (demo below) would like to add in soils and climate data but for now KISS
-shapeobj1<-  st_read("~/Desktop/UBfall2019/Erie-Tax-Parcels-Centroid-Points-SHP/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
-pointcoords<- read.csv("Environmental_Remediation_Sites.csv")
+shapeobj1<-  st_read("data/Erie-Tax-Parcels-Centroid-Points-SHP/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
+pointcoords<- read.csv("data/Environmental_Remediation_Sites.csv")
 
 
 ####convert data as necessary
@@ -164,26 +164,8 @@ best<-foreach(i=1:length(possible_n))%dopar%{
   }
 } %>% 
   compact()
-##############!!!!!!!!!!!!!best NEEDS TO BE REJOINED TO ORIGINAL GEOMETRIES FIRST RUN LOST KEY- 
-###########################-TO JOIN BY (SITE NAME OR SOMETHING) SEE ABOVE!!!!
-b<-as.data.frame(best[[1]][2,unique_name])
-b
-class(b)
-best_sf<-foreach(i=1:length(best))%dopar%{
-  out1<-shapeobj2
-  for(j in 1:nrow(shapeobj2)){
-    
-    for(k in 1:number){
-      
-      if(!(lapply(select(as.data.frame(shapeobj2[k,unique_name]),-geometry),as.character)%in%
-         lapply(best[[i]][j,unique_name],as.character))){
-        
-        out1[j,]<-NA
-        
-      }
-      else{
-        
-        out1[j,]<-shapeobj2[j,]
+##############        
+out1[j,]<-shapeobj2[j,]
         
       }
       

@@ -1,10 +1,13 @@
 ---
 title: "Tool for identifing replicate field study locations"
-author: Mitchell Htichcock
+author: Mitchell Hitchcock
 subtitle: "Demonstrated with Erie County brownfields"
 output: html
 ---
-
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+```
 # Introduction
 
 Replicated experiments are well known to have the highest power for statistical inference. However, this has rarely been properly implemented and numerous techniques have been devised to alleviate this challenge and to avoid psuedoreplication (Eberhardt and Thomas 1991).   Due to the power (lower typeII error) of large replicate studies it would be desirable to develop a method for conducting such studies in field experiments so as to derive stronger inferences. Additional replicates is of equal interest to Bayesian analysis as it is to frequentest but discussion of either is outside the scope of this work save that it benefits either.  The purpose of this project is to develop a tool for alleviating the first step which is identifying plausible replicate sites by using existing locations. It is possible to deal with uncontrolled variables through large numbers of replicates but the more uncontrolled and higher variation the variables are the more replicates are needed. The tool developed hear uses the large amounts of environmental data widely available to filter through locations and identify a desired number of replicates which are most similar given a set of variables. This tool is designed to be dynamic by allowing for multiple spatial data sets to be imported and desired variables to be filtered for. 
@@ -14,13 +17,431 @@ Replicated experiments are well known to have the highest power for statistical 
 # Materials and methods
 
 SHINY CODE GOES HERE
+```{r demo_code, eval=FALSE}
 
+library(sf)
+library(sp)
+library(profvis)
+library(dplyr)
+library(tidyverse)
+library(dplyr)
+library(doParallel)
+library(nngeo)#st_nn
+
+
+####user input data (demo below) would like to add in soils and climate data but for now KISS
+temp <- tempfile()
+download.file("http://gis.ny.gov/gisdata/fileserver/?DSID=1300&file=Erie-Tax-Parcels-Centroid-Points-SHP.zip",temp)
+unzip(temp, exdir="data/Erie")
+shapeobj1<-  st_read("data/Erie/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
+unlink(temp)
+
+temp1 <- tempfile()
+download.file("https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&sorting=true",temp1)
+pointcoords<- read.csv(temp1)
+unlink(temp1)
+
+
+####convert data as necessary
+
+  ############This is a workign first step
+point_trn<-st_as_sf(pointcoords,coords=c("Longitude","Latitude")) %>% 
+  st_set_crs(4326) %>%
+  st_transform(st_crs(shapeobj1)) %>% 
+  st_crop(st_bbox(shapeobj1))  
+
+
+
+
+
+
+####join data to intersecting objects
+
+
+  ###This looks like the way forward. This would be followed by additional data sets in a for loop
+      ####aggregate unions identical points collapsing certain factors into vectors of factor level
+      ####should retain shapeobj1 for joining at the end and regaining factor levels
+shapeobj2<-st_join(point_trn,shapeobj1,join=st_nn,k=1,maxdist=500) %>% 
+  aggregate( by=list(.$Program.Facility.Name),FUN=unique,do_union=TRUE,join = st_intersects)
+
+
+
+
+
+
+####User selects columns of interest and fixed value columns (done in shiny app)
+      ###user also needs to select site name field
+  ####text should be converted to factors here
+  ##each column should be listed with a drop down menu for use, ignore, or fixed
+    ##if fixed then set the fixed value from a list of possible values or factors
+      ##this information is then used to filter (should probably have a submit button to avoid continuous run)
+
+unique_name<-"Program.Facility.Name"#user input
+######DEMO all this here#####
+
+shapeobj_trim<-select(shapeobj2,unique_name,ACRES,Contaminants,Program.Type,DEC.Region,Control.Code,OU,Site.Class) %>% 
+  filter(ACRES>0)
+
+
+
+
+
+
+####user chooses number of sites desired "n"
+number=5
+
+
+####stepwise comparison of similarity (distance for values ) for all possible combinations of "n" sites
+  ###this should be a simple /s algo generating a first list generating a score, generating a sequential list
+    ###generating and comparing the two score, and keeping the better score and repeat with next sequential list
+
+#####score diff between two rows
+  ###input rows need already to be filtered for desired test columns
+    ####factors lost there levels somehow but the unique factor number remained in a vector see aggregate above
+score.calc<-function(rowprime,rowtest){
+
+  colscore<-vector(length=length(rowprime))
+  for(i in 1:ncol(rowprime)){
+    prime<-rowprime[i]
+    if(is.list(prime)){
+      prime<-unlist(prime)
+    }
+    test<-rowtest[i]
+    if(is.list(test)){
+      test<-unlist(test)
+    }
+    if(length(prime)>1||length(test)>1){
+      colscore[i]<-as.double(length(c(
+        setdiff(prime,test),
+        setdiff(test,prime)))
+      )
+
+    }
+    else if(is.double(prime)||is.numeric(prime)){
+        colscore[i]<-as.double(abs((prime-test)/(prime+test)))
+
+    }
+      else if(is.factor(prime)||is.character(prime)){
+        if(prime==test){
+          colscore[i]<-0
+
+        }
+        else{
+          colscore[i]<-1
+
+        }
+      }
+      else 
+        colscore[i]<-NA
+        }
+
+  return(sum(colscore))
+}
+
+
+####This tests the function score.calc should return 7
+#score.calc(shapeobj_trim[29,],shapeobj_trim[66,])
+
+
+#cols to test select(as.data.frame(sf), -geometry)
+shapeobj_test<-shapeobj_trim %>%
+  as.data.frame() %>% 
+  select(-geometry) %>% 
+  select(Program.Facility.Name,DEC.Region,Control.Code,Contaminants,Site.Class,ACRES)
+###user input except name
+
+##########run through each
+registerDoParallel(cores = 6)
+
+####This works but takes forevver (Note that there should be no zero scores because every site has unique names this is ok becuase it is uniform)
+possible_n<- foreach(r=1:nrow(shapeobj_test))%dopar%{
+  x<-shapeobj_test
+  for(i in 1:nrow(shapeobj_test)){
+  
+    x[i,ncol(shapeobj_test)+1]<-score.calc(shapeobj_test[r,],shapeobj_test[i,])
+    
+  }
+  
+  x<-head(arrange(x,x[,ncol(x)]),n=number)
+  x
+}
+
+
+sum(possible_n[[1]][,ncol(possible_n[[1]])])
+###establish values of smallest (best) value for comparisons in score across lists
+###uses difference between of most different values to generate list. this could be improved
+minimum<-foreach(i=1:length(possible_n),.combine=c)%dopar%{
+  sum(possible_n[[i]][,ncol(possible_n[[i]])])
+  } %>% 
+  min()
+minimum
+
+
+possible_n[[1]][5,ncol(possible_n[[1]])]
+####generate a list of best combinations
+best<-foreach(i=1:length(possible_n))%dopar%{
+  if(sum(possible_n[[i]][,ncol(possible_n[[i]])])==minimum){
+    return(possible_n[[i]])
+  }
+} %>% 
+  compact()
+##############  the generated list does not have geometry yet and I have not been able to add back
+#############   in but a prototype of how is below      
+
+out1<-shapeobj2
+for(j in 1:nrow(shapeobj2)){
+  
+  for(k in 1:number){
+    
+    if(!(lapply(select(as.data.frame(shapeobj2[j,unique_name]),-geometry),as.character)%in%
+         lapply(best[[1]][k,unique_name],as.character))){
+      
+      for(l in 1:ncol(shapobj2[j,])){
+        out1[j,l]<-NA
+      }
+    }
+    else{
+      
+      out1[j,]<-shapeobj2[j,]
+      
+    }
+    
+  }
+} %>% 
+out1<-compact(out1)
+return(out1)
+
+
+  ###the resulting combinations
+####generated site list displayed in leaflet map and table 
+  ### downloadable option could be nice too.
+
+
+kable(best[[1]],label<-"best possible combination of n sites")
+
+
+
+####profit /s
+
+```
+
+this will eventually be incorperated as a shiny app
 
 
 # Results
 
 
-leaflet map and table
+```{r actual_run, echo=FALSE}
+
+library(sf)
+library(sp)
+library(profvis)
+library(dplyr)
+library(tidyverse)
+library(dplyr)
+library(doParallel)
+library(nngeo)#st_nn
+
+
+####user input data (demo below) would like to add in soils and climate data but for now KISS
+##if zip unzip else
+temp <- tempfile()
+download.file("http://gis.ny.gov/gisdata/fileserver/?DSID=1300&file=Erie-Tax-Parcels-Centroid-Points-SHP.zip",temp)
+unzip(temp, exdir="data/Erie")
+shapeobj1<-  st_read("data/Erie/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
+unlink(temp)
+
+temp1 <- tempfile()
+download.file("https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&sorting=true",temp1)
+pointcoords<- read.csv(temp1)
+unlink(temp1)
+
+
+
+####convert data as necessary
+
+  ############This is a workign first step
+point_trn<-st_as_sf(pointcoords,coords=c("Longitude","Latitude")) %>% 
+  st_set_crs(4326) %>%
+  st_transform(st_crs(shapeobj1)) %>% 
+  st_crop(st_bbox(shapeobj1))  
+
+
+
+
+
+
+####join data to intersecting objects
+
+
+  ###This looks like the way forward. This would be followed by additional data sets in a for loop
+      ####aggregate unions identical points collapsing certain factors into vectors of factor level
+      ####should retain shapeobj1 for joining at the end and regaining factor levels
+shapeobj2<-st_join(point_trn,shapeobj1,join=st_nn,k=1,maxdist=500) %>% 
+  aggregate( by=list(.$Program.Facility.Name),FUN=unique,do_union=TRUE,join = st_intersects)
+
+
+
+
+
+
+####User selects columns of interest and fixed value columns (done in shiny app)
+      ###user also needs to select site name field
+  ####text should be converted to factors here
+  ##each column should be listed with a drop down menu for use, ignore, or fixed
+    ##if fixed then set the fixed value from a list of possible values or factors
+      ##this information is then used to filter (should probably have a submit button to avoid continuous run)
+
+unique_name<-"Program.Facility.Name"#user input
+######DEMO all this here#####
+
+shapeobj_trim<-select(shapeobj2,unique_name,ACRES,Contaminants,Program.Type,DEC.Region,Control.Code,OU,Site.Class) %>% 
+  filter(ACRES>0)
+
+
+
+
+
+
+####user chooses number of sites desired "n"
+number=5
+
+
+####stepwise comparison of similarity (distance for values ) for all possible combinations of "n" sites
+  ###this should be a simple /s algo generating a first list generating a score, generating a sequential list
+    ###generating and comparing the two score, and keeping the better score and repeat with next sequential list
+
+#####score diff between two rows
+  ###input rows need already to be filtered for desired test columns
+    ####factors lost there levels somehow but the unique factor number remained in a vector see aggregate above
+score.calc<-function(rowprime,rowtest){
+
+  colscore<-vector(length=length(rowprime))
+  for(i in 1:ncol(rowprime)){
+    prime<-rowprime[i]
+    if(is.list(prime)){
+      prime<-unlist(prime)
+    }
+    test<-rowtest[i]
+    if(is.list(test)){
+      test<-unlist(test)
+    }
+    if(length(prime)>1||length(test)>1){
+      colscore[i]<-as.double(length(c(
+        setdiff(prime,test),
+        setdiff(test,prime)))
+      )
+
+    }
+    else if(is.double(prime)||is.numeric(prime)){
+        colscore[i]<-as.double(abs((prime-test)/(prime+test)))
+
+    }
+      else if(is.factor(prime)||is.character(prime)){
+        if(prime==test){
+          colscore[i]<-0
+
+        }
+        else{
+          colscore[i]<-1
+
+        }
+      }
+      else 
+        colscore[i]<-NA
+        }
+
+  return(sum(colscore))
+}
+
+
+####This tests the function score.calc should return 7
+#score.calc(shapeobj_trim[29,],shapeobj_trim[66,])
+
+
+#cols to test select(as.data.frame(sf), -geometry)
+shapeobj_test<-shapeobj_trim %>%
+  as.data.frame() %>% 
+  select(-geometry) %>% 
+  select(Program.Facility.Name,DEC.Region,Control.Code,Contaminants,Site.Class,ACRES)
+###user input except name
+
+##########run through each
+registerDoParallel(cores = 6)
+
+####This works but takes forevver (Note that there should be no zero scores because every site has unique names this is ok becuase it is uniform)
+possible_n<- foreach(r=1:nrow(shapeobj_test))%dopar%{
+  x<-shapeobj_test
+  for(i in 1:nrow(shapeobj_test)){
+  
+    x[i,ncol(shapeobj_test)+1]<-score.calc(shapeobj_test[r,],shapeobj_test[i,])
+    
+  }
+  
+  x<-head(arrange(x,x[,ncol(x)]),n=number)
+  x
+}
+
+
+
+###establish values of smallest (best) value for comparisons in score across lists
+###uses difference between of most different values to generate list. this could be improved
+minimum<-foreach(i=1:length(possible_n),.combine=c)%dopar%{
+  sum(possible_n[[i]][,ncol(possible_n[[i]])])
+  } %>% 
+  min()
+
+
+
+possible_n[[1]][5,ncol(possible_n[[1]])]
+####generate a list of best combinations
+best<-foreach(i=1:length(possible_n))%dopar%{
+  if(sum(possible_n[[i]][,ncol(possible_n[[i]])])==minimum){
+    return(possible_n[[i]])
+  }
+} %>% 
+  compact()
+##############  the generated list does not have geometry yet and I have not been able to add back
+#############   in but a prototype of how is below      
+
+# out1<-shapeobj2
+# for(j in 1:nrow(shapeobj2)){
+#   
+#   for(k in 1:number){
+#     
+#     if(!(lapply(select(as.data.frame(shapeobj2[j,unique_name]),-geometry),as.character)%in%
+#          lapply(best[[1]][k,unique_name],as.character))){
+#       
+#       for(l in 1:ncol(shapobj2[j,])){
+#         out1[j,l]<-NA
+#       }
+#     }
+#     else{
+#       
+#       out1[j,]<-shapeobj2[j,]
+#       
+#     }
+#     
+#   }
+# } %>% 
+# out1<-compact(out1)
+# return(out1)
+
+
+  ###the resulting combinations
+####generated site list displayed in leaflet map and table 
+  ### downloadable option could be nice too.
+
+print("best possible combination of n sites")
+as.data.frame(best[[1]])
+
+
+
+####profit /s
+```
+
+
+leaflet map and table will eventually go here
 
 
 
