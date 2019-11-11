@@ -10,12 +10,12 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
-<meta name="author" content="Mitchell Htichcock" />
+<meta name="author" content="Mitchell Hitchcock" />
 
 
-<title>I have better titles</title>
+<title>Tool for identifing replicate field study locations</title>
 
-<script src="site_libs/jquery-1.12.4/jquery.min.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/simplex.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -27,15 +27,6 @@
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
-<script src="site_libs/kePrint-0.0.1/kePrint.js"></script>
-<script src="site_libs/htmlwidgets-1.3/htmlwidgets.js"></script>
-<link href="site_libs/leaflet-1.3.1/leaflet.css" rel="stylesheet" />
-<script src="site_libs/leaflet-1.3.1/leaflet.js"></script>
-<link href="site_libs/leafletfix-1.0.0/leafletfix.css" rel="stylesheet" />
-<script src="site_libs/Proj4Leaflet-1.0.1/proj4-compressed.js"></script>
-<script src="site_libs/Proj4Leaflet-1.0.1/proj4leaflet.js"></script>
-<link href="site_libs/rstudio_leaflet-1.3.1/rstudio_leaflet.css" rel="stylesheet" />
-<script src="site_libs/leaflet-binding-2.0.2/leaflet.js"></script>
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css">
@@ -98,6 +89,7 @@ code {
 }
 img {
   max-width:100%;
+  height: auto;
 }
 .tabbed-pane {
   padding-top: 12px;
@@ -367,278 +359,281 @@ div.tocify {
 
 
 
-<h1 class="title toc-ignore">I have better titles</h1>
-<h3 class="subtitle">Subtitle here if desired</h3>
-<h4 class="author">Mitchell Htichcock</h4>
+<h1 class="title toc-ignore">Tool for identifing replicate field study locations</h1>
+<h3 class="subtitle">Demonstrated with Erie County brownfields</h3>
+<h4 class="author">Mitchell Hitchcock</h4>
 
 </div>
 
 
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>My really awesome and complete introduction will go here.</p>
+<p>Replicated experiments are well known to have the highest power for statistical inference. However, this has rarely been properly implemented and numerous techniques have been devised to alleviate this challenge and to avoid psuedoreplication (Eberhardt and Thomas 1991). Due to the power (lower typeII error) of large replicate studies it would be desirable to develop a method for conducting such studies in field experiments so as to derive stronger inferences. Additional replicates is of equal interest to Bayesian analysis as it is to frequentest but discussion of either is outside the scope of this work save that it benefits either. The purpose of this project is to develop a tool for alleviating the first step which is identifying plausible replicate sites by using existing locations. It is possible to deal with uncontrolled variables through large numbers of replicates but the more uncontrolled and higher variation the variables are the more replicates are needed. The tool developed hear uses the large amounts of environmental data widely available to filter through locations and identify a desired number of replicates which are most similar given a set of variables. This tool is designed to be dynamic by allowing for multiple spatial data sets to be imported and desired variables to be filtered for.</p>
 </div>
 <div id="materials-and-methods" class="section level1">
 <h1>Materials and methods</h1>
-<p>Narrative and most code will go here. Describe what you are doing and show how to do it (with code).</p>
-<p>You can do bullets like this:</p>
-<ul>
-<li>The first most important thing</li>
-<li>The second most important thing</li>
-<li>The third most important thing</li>
-</ul>
-<p>You can do numbers like this:</p>
-<ol style="list-style-type: decimal">
-<li>The first most important thing</li>
-<li>The second most important thing</li>
-<li>The third most important thing</li>
-</ol>
-<p>See <a href="http://rmarkdown.rstudio.com/">http://rmarkdown.rstudio.com/</a> for all the amazing things you can do.</p>
-<p>Here’s my first code chunk.</p>
-<pre class="r"><code>1+2</code></pre>
-<pre><code>## [1] 3</code></pre>
-<p>Load any required packages in a code chunk (you may need to install some packages):</p>
-<pre class="r"><code>library(tidyverse)
-library(leaflet)
-library(kableExtra)
-knitr::opts_chunk$set(cache=TRUE)  # cache the results for quick compiling</code></pre>
-<div id="download-and-clean-all-required-data" class="section level2">
-<h2>Download and clean all required data</h2>
-<pre class="r"><code>n=20
-data=data.frame(x=runif(n,-180,180),
-                y=runif(n,-60,60),
-                size = runif(n, 5, 20),
-                category = factor(
-                  sample(letters[1:5], n, replace = TRUE)
-                  ),
-                value = rnorm(n))</code></pre>
-<pre class="r"><code>data %&gt;% 
-  slice(1:10) %&gt;% #show only 1:n rows
-  kable(digits=2,align=&quot;c&quot;)%&gt;% #make table and round to two digits
-  kable_styling(bootstrap_options = 
-                  c(&quot;striped&quot;, &quot;hover&quot;, &quot;condensed&quot;, &quot;responsive&quot;)) #apply other formatting</code></pre>
-<table class="table table-striped table-hover table-condensed table-responsive" style="margin-left: auto; margin-right: auto;">
-<thead>
-<tr>
-<th style="text-align:center;">
-x
-</th>
-<th style="text-align:center;">
-y
-</th>
-<th style="text-align:center;">
-size
-</th>
-<th style="text-align:center;">
-category
-</th>
-<th style="text-align:center;">
-value
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:center;">
-65.17
-</td>
-<td style="text-align:center;">
--7.47
-</td>
-<td style="text-align:center;">
-6.23
-</td>
-<td style="text-align:center;">
-d
-</td>
-<td style="text-align:center;">
--0.39
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
--105.56
-</td>
-<td style="text-align:center;">
--43.59
-</td>
-<td style="text-align:center;">
-16.90
-</td>
-<td style="text-align:center;">
-a
-</td>
-<td style="text-align:center;">
--1.63
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
--135.76
-</td>
-<td style="text-align:center;">
-53.39
-</td>
-<td style="text-align:center;">
-19.42
-</td>
-<td style="text-align:center;">
-a
-</td>
-<td style="text-align:center;">
--0.62
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
-165.36
-</td>
-<td style="text-align:center;">
--32.10
-</td>
-<td style="text-align:center;">
-13.30
-</td>
-<td style="text-align:center;">
-c
-</td>
-<td style="text-align:center;">
--0.46
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
--148.35
-</td>
-<td style="text-align:center;">
-28.94
-</td>
-<td style="text-align:center;">
-13.59
-</td>
-<td style="text-align:center;">
-d
-</td>
-<td style="text-align:center;">
-1.12
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
-171.16
-</td>
-<td style="text-align:center;">
-5.74
-</td>
-<td style="text-align:center;">
-17.43
-</td>
-<td style="text-align:center;">
-d
-</td>
-<td style="text-align:center;">
-0.74
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
-30.40
-</td>
-<td style="text-align:center;">
--16.93
-</td>
-<td style="text-align:center;">
-13.51
-</td>
-<td style="text-align:center;">
-d
-</td>
-<td style="text-align:center;">
-0.05
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
--54.79
-</td>
-<td style="text-align:center;">
--18.08
-</td>
-<td style="text-align:center;">
-12.76
-</td>
-<td style="text-align:center;">
-a
-</td>
-<td style="text-align:center;">
-0.54
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
--85.65
-</td>
-<td style="text-align:center;">
-32.12
-</td>
-<td style="text-align:center;">
-11.33
-</td>
-<td style="text-align:center;">
-a
-</td>
-<td style="text-align:center;">
--0.28
-</td>
-</tr>
-<tr>
-<td style="text-align:center;">
--155.11
-</td>
-<td style="text-align:center;">
-6.30
-</td>
-<td style="text-align:center;">
-11.07
-</td>
-<td style="text-align:center;">
-b
-</td>
-<td style="text-align:center;">
--0.77
-</td>
-</tr>
-</tbody>
-</table>
-<p>Add any additional processing steps here.</p>
-</div>
+<p>SHINY CODE GOES HERE</p>
+<pre class="r"><code>library(sf)
+library(sp)
+library(profvis)
+library(dplyr)
+library(tidyverse)
+library(dplyr)
+library(doParallel)
+library(nngeo)#st_nn
+
+
+####user input data (demo below) would like to add in soils and climate data but for now KISS
+temp &lt;- tempfile()
+download.file(&quot;http://gis.ny.gov/gisdata/fileserver/?DSID=1300&amp;file=Erie-Tax-Parcels-Centroid-Points-SHP.zip&quot;,temp)
+shapeobj1&lt;-  st_read(unz(temp, &quot;a1.dat&quot;))
+unlink(temp)
+
+temp1 &lt;- tempfile()
+download.file(&quot;https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&amp;sorting=true&quot;,temp1)
+pointcoords&lt;- read.csv(unz(temp1, &quot;a1.dat&quot;))
+unlink(temp1)
+
+####convert data as necessary
+
+  ############This is a workign first step
+point_trn&lt;-st_as_sf(pointcoords,coords=c(&quot;Longitude&quot;,&quot;Latitude&quot;)) %&gt;% 
+  st_set_crs(4326) %&gt;%
+  st_transform(st_crs(shapeobj1)) %&gt;% 
+  st_crop(st_bbox(shapeobj1))  
+
+
+
+
+
+
+####join data to intersecting objects
+
+
+  ###This looks like the way forward. This would be followed by additional data sets in a for loop
+      ####aggregate unions identical points collapsing certain factors into vectors of factor level
+      ####should retain shapeobj1 for joining at the end and regaining factor levels
+shapeobj2&lt;-st_join(point_trn,shapeobj1,join=st_nn,k=1,maxdist=500) %&gt;% 
+  aggregate( by=list(.$Program.Facility.Name),FUN=unique,do_union=TRUE,join = st_intersects)
+
+
+
+
+
+
+####User selects columns of interest and fixed value columns (done in shiny app)
+      ###user also needs to select site name field
+  ####text should be converted to factors here
+  ##each column should be listed with a drop down menu for use, ignore, or fixed
+    ##if fixed then set the fixed value from a list of possible values or factors
+      ##this information is then used to filter (should probably have a submit button to avoid continuous run)
+
+unique_name&lt;-&quot;Program.Facility.Name&quot;#user input
+######DEMO all this here#####
+
+shapeobj_trim&lt;-select(shapeobj2,unique_name,ACRES,Contaminants,Program.Type,DEC.Region,Control.Code,OU,Site.Class) %&gt;% 
+  filter(ACRES&gt;0)
+
+
+
+
+
+
+####user chooses number of sites desired &quot;n&quot;
+number=5
+
+
+####stepwise comparison of similarity (distance for values ) for all possible combinations of &quot;n&quot; sites
+  ###this should be a simple /s algo generating a first list generating a score, generating a sequential list
+    ###generating and comparing the two score, and keeping the better score and repeat with next sequential list
+
+#####score diff between two rows
+  ###input rows need already to be filtered for desired test columns
+    ####factors lost there levels somehow but the unique factor number remained in a vector see aggregate above
+score.calc&lt;-function(rowprime,rowtest){
+
+  colscore&lt;-vector(length=length(rowprime))
+  for(i in 1:ncol(rowprime)){
+    prime&lt;-rowprime[i]
+    if(is.list(prime)){
+      prime&lt;-unlist(prime)
+    }
+    test&lt;-rowtest[i]
+    if(is.list(test)){
+      test&lt;-unlist(test)
+    }
+    if(length(prime)&gt;1||length(test)&gt;1){
+      colscore[i]&lt;-as.double(length(c(
+        setdiff(prime,test),
+        setdiff(test,prime)))
+      )
+
+    }
+    else if(is.double(prime)||is.numeric(prime)){
+        colscore[i]&lt;-as.double(abs((prime-test)/(prime+test)))
+
+    }
+      else if(is.factor(prime)||is.character(prime)){
+        if(prime==test){
+          colscore[i]&lt;-0
+
+        }
+        else{
+          colscore[i]&lt;-1
+
+        }
+      }
+      else 
+        colscore[i]&lt;-NA
+        }
+
+  return(sum(colscore))
+}
+
+
+####This tests the function score.calc should return 7
+#score.calc(shapeobj_trim[29,],shapeobj_trim[66,])
+
+
+#cols to test select(as.data.frame(sf), -geometry)
+shapeobj_test&lt;-shapeobj_trim %&gt;%
+  as.data.frame() %&gt;% 
+  select(-geometry) %&gt;% 
+  select(Program.Facility.Name,DEC.Region,Control.Code,Contaminants,Site.Class,ACRES)
+###user input except name
+
+##########run through each
+registerDoParallel(cores = 6)
+
+####This works but takes forevver (Note that there should be no zero scores because every site has unique names this is ok becuase it is uniform)
+possible_n&lt;- foreach(r=1:nrow(shapeobj_test))%dopar%{
+  x&lt;-shapeobj_test
+  for(i in 1:nrow(shapeobj_test)){
+  
+    x[i,ncol(shapeobj_test)+1]&lt;-score.calc(shapeobj_test[r,],shapeobj_test[i,])
+    
+  }
+  
+  x&lt;-head(arrange(x,x[,ncol(x)]),n=number)
+  x
+}
+
+
+sum(possible_n[[1]][,ncol(possible_n[[1]])])
+###establish values of smallest (best) value for comparisons in score across lists
+###uses difference between of most different values to generate list. this could be improved
+minimum&lt;-foreach(i=1:length(possible_n),.combine=c)%dopar%{
+  sum(possible_n[[i]][,ncol(possible_n[[i]])])
+  } %&gt;% 
+  min()
+minimum
+
+
+possible_n[[1]][5,ncol(possible_n[[1]])]
+####generate a list of best combinations
+best&lt;-foreach(i=1:length(possible_n))%dopar%{
+  if(sum(possible_n[[i]][,ncol(possible_n[[i]])])==minimum){
+    return(possible_n[[i]])
+  }
+} %&gt;% 
+  compact()
+##############  the generated list does not have geometry yet and I have not been able to add back
+#############   in but a prototype of how is below      
+
+out1&lt;-shapeobj2
+for(j in 1:nrow(shapeobj2)){
+  
+  for(k in 1:number){
+    
+    if(!(lapply(select(as.data.frame(shapeobj2[j,unique_name]),-geometry),as.character)%in%
+         lapply(best[[1]][k,unique_name],as.character))){
+      
+      for(l in 1:ncol(shapobj2[j,])){
+        out1[j,l]&lt;-NA
+      }
+    }
+    else{
+      
+      out1[j,]&lt;-shapeobj2[j,]
+      
+    }
+    
+  }
+} %&gt;% 
+out1&lt;-compact(out1)
+return(out1)
+
+
+  ###the resulting combinations
+####generated site list displayed in leaflet map and table 
+  ### downloadable option could be nice too.
+
+
+kable(best[[1]],label&lt;-&quot;best possible combination of n sites&quot;)
+
+
+
+####profit /s</code></pre>
+<p>this will eventually be incorperated as a shiny app</p>
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
-<p>Show tables, plots, etc. and describe them.</p>
-<pre class="r"><code>m &lt;- leaflet(data) %&gt;% 
-  addTiles() %&gt;% 
-  addCircleMarkers(~x, ~y, radius = ~size,color = ~as.factor(category)) %&gt;% 
-  addPopups(~x[2], ~y[2], &quot;Random popup&quot;)
-m  # a map with the default OSM tile layer</code></pre>
-<div class="figure">
-<div id="htmlwidget-8c750720db93383c4ef0" style="width:576px;height:288px;" class="leaflet html-widget"></div>
-<script type="application/json" data-for="htmlwidget-8c750720db93383c4ef0">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"http://openstreetmap.org\">OpenStreetMap<\/a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA<\/a>"}]},{"method":"addCircleMarkers","args":[[-7.46980313211679,-43.590548504144,53.3868983387947,-32.0952276885509,28.9431422017515,5.73945798911154,-16.932167597115,-18.0773039907217,32.118126405403,6.29711955785751,35.4519351292402,32.3219001945108,56.9294313155115,-44.0403679478914,40.7127632014453,18.8074060063809,12.794380383566,26.7745177354664,22.1581529919058,-11.6065473295748],[65.1664949208498,-105.559476977214,-135.75728408061,165.363267045468,-148.346808850765,171.158071495593,30.4032140225172,-54.790010266006,-85.6467523891479,-155.114052789286,59.1262252628803,-117.661860957742,-171.379822958261,95.3813499771059,11.6755731124431,76.5308545064181,130.718866679817,116.012302497402,104.764587571844,-178.64999525249],[6.23433572356589,16.8964440911077,19.4217556831427,13.2955323357601,13.5850248311181,17.429438738618,13.5086242202669,12.7560508984607,11.3277163542807,11.0677517182194,11.1919446487445,5.56572295841761,18.2844777917489,13.2455151097383,14.0199370286427,5.2826831350103,16.633216481423,6.40114828827791,19.4594413903542,15.4294223804027],null,null,{"interactive":true,"className":"","stroke":true,"color":["d","a","a","c","d","d","d","a","a","b","d","b","e","d","a","e","d","a","b","e"],"weight":5,"opacity":0.5,"fill":true,"fillColor":["d","a","a","c","d","d","d","a","a","b","d","b","e","d","a","e","d","a","b","e"],"fillOpacity":0.2},null,null,null,null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null]},{"method":"addPopups","args":[-43.590548504144,-105.559476977214,"Random popup",null,null,{"maxWidth":300,"minWidth":50,"autoPan":true,"keepInView":false,"closeButton":true,"className":""}]}],"limits":{"lat":[-44.0403679478914,56.9294313155115],"lng":[-178.64999525249,171.158071495593]}},"evals":[],"jsHooks":[]}</script>
-<p class="caption">
-Map of completely random data
-</p>
-</div>
-<pre class="r"><code>data %&gt;% 
-  ggplot(aes(x=x,y=y,col=category))+
-  geom_point()</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<pre><code>## Linking to GEOS 3.7.2, GDAL 3.0.1, PROJ 6.2.0</code></pre>
+<pre><code>## 
+## Attaching package: &#39;dplyr&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:stats&#39;:
+## 
+##     filter, lag</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
+## 
+##     intersect, setdiff, setequal, union</code></pre>
+<pre><code>## ── Attaching packages ───────────────────────────────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
+<pre><code>## ✔ ggplot2 3.2.0     ✔ readr   1.3.1
+## ✔ tibble  2.1.3     ✔ purrr   0.3.2
+## ✔ tidyr   0.8.3     ✔ stringr 1.4.0
+## ✔ ggplot2 3.2.0     ✔ forcats 0.4.0</code></pre>
+<pre><code>## ── Conflicts ──────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()</code></pre>
+<pre><code>## Loading required package: foreach</code></pre>
+<pre><code>## 
+## Attaching package: &#39;foreach&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:purrr&#39;:
+## 
+##     accumulate, when</code></pre>
+<pre><code>## Loading required package: iterators</code></pre>
+<pre><code>## Loading required package: parallel</code></pre>
+<pre><code>## Reading layer `Erie_2018_Tax_Parcel_Centroid_Points_SHP&#39; from data source `/home/tiwaz/Desktop/UBfall2019/spatdatanaly/GEO511finlprjkt/data/Erie/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp&#39; using driver `ESRI Shapefile&#39;
+## Simple feature collection with 363784 features and 70 fields
+## geometry type:  POINT
+## dimension:      XY
+## bbox:           xmin: 161025.5 ymin: 4706563 xmax: 217831 ymax: 4777652
+## epsg (SRID):    26918
+## proj4string:    +proj=utm +zone=18 +datum=NAD83 +units=m +no_defs</code></pre>
+<pre><code>## Warning: attribute variables are assumed to be spatially constant
+## throughout all geometries</code></pre>
+<pre><code>## [1] 6.300541</code></pre>
+<pre><code>## [1] &quot;best possible combination of n sites&quot;</code></pre>
+<pre><code>##                Program.Facility.Name DEC.Region Control.Code Contaminants
+## 1                          Chem-Trol          9            1            1
+## 2            Pfohl Brothers Landfill          9            1       203, 1
+## 3            Greif Bros. Corporation          9            1            1
+## 4 Tennessee Gas Pipeline Station 229          9         1, 5            1
+## 5    Niagara Transformer - Dale Road          9            1          192
+##   Site.Class ACRES       V7
+## 1         04 19.09 0.000000
+## 2         04 21.70 2.063986
+## 3         C  15.27 2.111176
+## 4         04 49.70 2.444977
+## 5         04  3.60 2.682680</code></pre>
+<p>leaflet map and table will eventually go here</p>
 </div>
 <div id="conclusions" class="section level1">
 <h1>Conclusions</h1>
-<p>What have you learned? Are there any broader implications?</p>
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>
+<p>Eberhardt, L. L., and J. M. Thomas. 1991. Designing Environmental Field Studies. Ecological Monographs 61:53–73.</p>
 </div>
 
 <!-- give the footer some space -->
