@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
 
 <head>
 
 <meta charset="utf-8" />
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
@@ -15,7 +14,7 @@
 
 <title>Tool for identifing replicate field study locations</title>
 
-<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<script src="site_libs/jquery-1.12.4/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/simplex.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -27,6 +26,14 @@
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<script src="site_libs/htmlwidgets-1.5.1/htmlwidgets.js"></script>
+<link href="site_libs/leaflet-1.3.1/leaflet.css" rel="stylesheet" />
+<script src="site_libs/leaflet-1.3.1/leaflet.js"></script>
+<link href="site_libs/leafletfix-1.0.0/leafletfix.css" rel="stylesheet" />
+<script src="site_libs/Proj4Leaflet-1.0.1/proj4-compressed.js"></script>
+<script src="site_libs/Proj4Leaflet-1.0.1/proj4leaflet.js"></script>
+<link href="site_libs/rstudio_leaflet-1.3.1/rstudio_leaflet.css" rel="stylesheet" />
+<script src="site_libs/leaflet-binding-2.0.3/leaflet.js"></script>
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css">
@@ -89,7 +96,6 @@ code {
 }
 img {
   max-width:100%;
-  height: auto;
 }
 .tabbed-pane {
   padding-top: 12px;
@@ -238,6 +244,7 @@ $(document).ready(function () {
   border: none;
   display: inline-block;
   border-radius: 4px;
+  background-color: transparent;
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li {
@@ -266,6 +273,12 @@ $(document).ready(function () {
 }
 }
 
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
 
 .toc-content {
   padding-left: 30px;
@@ -368,217 +381,16 @@ div.tocify {
 
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>Replicated experiments are well known to have the highest power for statistical inference. However, this has rarely been properly implemented and numerous techniques have been devised to alleviate this challenge and to avoid psuedoreplication (Eberhardt and Thomas 1991). Due to the power (lower typeII error) of large replicate studies it would be desirable to develop a method for conducting such studies in field experiments so as to derive stronger inferences. Additional replicates is of equal interest to Bayesian analysis as it is to frequentest but discussion of either is outside the scope of this work save that it benefits either. The purpose of this project is to develop a tool for alleviating the first step which is identifying plausible replicate sites by using existing locations. It is possible to deal with uncontrolled variables through large numbers of replicates but the more uncontrolled and higher variation the variables are the more replicates are needed. The tool developed hear uses the large amounts of environmental data widely available to filter through locations and identify a desired number of replicates which are most similar given a set of variables. This tool is designed to be dynamic by allowing for multiple spatial data sets to be imported and desired variables to be filtered for.</p>
+<p>Replicated experiments are well known to have the highest power for statistical inference. However, this has rarely been properly implemented in field studies and numerous techniques have been devised to alleviate this challenge while avoiding psuedoreplication (Eberhardt and Thomas 1991). Due to the power (lower typeII error) of large replicate studies it would be desirable to develop a method for conducting such studies in field experiments so as to derive stronger inferences. Higher power is of equal interest to Bayesian analysis as it is to frequentest but discussion of either is outside the scope of this work save that it benefits all. The purpose of this project is to develop a tool for alleviating the first step which is identifying plausible replicate sites by using existing locations. It is possible to deal with uncontrolled variables through large numbers of replicates but the more uncontrolled and higher variation the variables are the more replicates are needed. This tool uses the large amounts of environmental data widely available to filter through locations and identify a desired number of replicates which are most similar given a set of variables. This tool is designed to be dynamic by allowing for multiple spatial data sets to be imported and desired variables to be filtered for.</p>
 </div>
 <div id="materials-and-methods" class="section level1">
 <h1>Materials and methods</h1>
 <p>SHINY CODE GOES HERE</p>
-<pre class="r"><code>library(sf)
-library(sp)
-library(profvis)
-library(dplyr)
-library(tidyverse)
-library(dplyr)
-library(doParallel)
-library(nngeo)#st_nn
-
-
-####user input data (demo below) would like to add in soils and climate data but for now KISS
-temp &lt;- tempfile()
-download.file(&quot;http://gis.ny.gov/gisdata/fileserver/?DSID=1300&amp;file=Erie-Tax-Parcels-Centroid-Points-SHP.zip&quot;,temp)
-shapeobj1&lt;-  st_read(unz(temp, &quot;a1.dat&quot;))
-unlink(temp)
-
-temp1 &lt;- tempfile()
-download.file(&quot;https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&amp;sorting=true&quot;,temp1)
-pointcoords&lt;- read.csv(unz(temp1, &quot;a1.dat&quot;))
-unlink(temp1)
-
-####convert data as necessary
-
-  ############This is a workign first step
-point_trn&lt;-st_as_sf(pointcoords,coords=c(&quot;Longitude&quot;,&quot;Latitude&quot;)) %&gt;% 
-  st_set_crs(4326) %&gt;%
-  st_transform(st_crs(shapeobj1)) %&gt;% 
-  st_crop(st_bbox(shapeobj1))  
-
-
-
-
-
-
-####join data to intersecting objects
-
-
-  ###This looks like the way forward. This would be followed by additional data sets in a for loop
-      ####aggregate unions identical points collapsing certain factors into vectors of factor level
-      ####should retain shapeobj1 for joining at the end and regaining factor levels
-shapeobj2&lt;-st_join(point_trn,shapeobj1,join=st_nn,k=1,maxdist=500) %&gt;% 
-  aggregate( by=list(.$Program.Facility.Name),FUN=unique,do_union=TRUE,join = st_intersects)
-
-
-
-
-
-
-####User selects columns of interest and fixed value columns (done in shiny app)
-      ###user also needs to select site name field
-  ####text should be converted to factors here
-  ##each column should be listed with a drop down menu for use, ignore, or fixed
-    ##if fixed then set the fixed value from a list of possible values or factors
-      ##this information is then used to filter (should probably have a submit button to avoid continuous run)
-
-unique_name&lt;-&quot;Program.Facility.Name&quot;#user input
-######DEMO all this here#####
-
-shapeobj_trim&lt;-select(shapeobj2,unique_name,ACRES,Contaminants,Program.Type,DEC.Region,Control.Code,OU,Site.Class) %&gt;% 
-  filter(ACRES&gt;0)
-
-
-
-
-
-
-####user chooses number of sites desired &quot;n&quot;
-number=5
-
-
-####stepwise comparison of similarity (distance for values ) for all possible combinations of &quot;n&quot; sites
-  ###this should be a simple /s algo generating a first list generating a score, generating a sequential list
-    ###generating and comparing the two score, and keeping the better score and repeat with next sequential list
-
-#####score diff between two rows
-  ###input rows need already to be filtered for desired test columns
-    ####factors lost there levels somehow but the unique factor number remained in a vector see aggregate above
-score.calc&lt;-function(rowprime,rowtest){
-
-  colscore&lt;-vector(length=length(rowprime))
-  for(i in 1:ncol(rowprime)){
-    prime&lt;-rowprime[i]
-    if(is.list(prime)){
-      prime&lt;-unlist(prime)
-    }
-    test&lt;-rowtest[i]
-    if(is.list(test)){
-      test&lt;-unlist(test)
-    }
-    if(length(prime)&gt;1||length(test)&gt;1){
-      colscore[i]&lt;-as.double(length(c(
-        setdiff(prime,test),
-        setdiff(test,prime)))
-      )
-
-    }
-    else if(is.double(prime)||is.numeric(prime)){
-        colscore[i]&lt;-as.double(abs((prime-test)/(prime+test)))
-
-    }
-      else if(is.factor(prime)||is.character(prime)){
-        if(prime==test){
-          colscore[i]&lt;-0
-
-        }
-        else{
-          colscore[i]&lt;-1
-
-        }
-      }
-      else 
-        colscore[i]&lt;-NA
-        }
-
-  return(sum(colscore))
-}
-
-
-####This tests the function score.calc should return 7
-#score.calc(shapeobj_trim[29,],shapeobj_trim[66,])
-
-
-#cols to test select(as.data.frame(sf), -geometry)
-shapeobj_test&lt;-shapeobj_trim %&gt;%
-  as.data.frame() %&gt;% 
-  select(-geometry) %&gt;% 
-  select(Program.Facility.Name,DEC.Region,Control.Code,Contaminants,Site.Class,ACRES)
-###user input except name
-
-##########run through each
-registerDoParallel(cores = 6)
-
-####This works but takes forevver (Note that there should be no zero scores because every site has unique names this is ok becuase it is uniform)
-possible_n&lt;- foreach(r=1:nrow(shapeobj_test))%dopar%{
-  x&lt;-shapeobj_test
-  for(i in 1:nrow(shapeobj_test)){
-  
-    x[i,ncol(shapeobj_test)+1]&lt;-score.calc(shapeobj_test[r,],shapeobj_test[i,])
-    
-  }
-  
-  x&lt;-head(arrange(x,x[,ncol(x)]),n=number)
-  x
-}
-
-
-sum(possible_n[[1]][,ncol(possible_n[[1]])])
-###establish values of smallest (best) value for comparisons in score across lists
-###uses difference between of most different values to generate list. this could be improved
-minimum&lt;-foreach(i=1:length(possible_n),.combine=c)%dopar%{
-  sum(possible_n[[i]][,ncol(possible_n[[i]])])
-  } %&gt;% 
-  min()
-minimum
-
-
-possible_n[[1]][5,ncol(possible_n[[1]])]
-####generate a list of best combinations
-best&lt;-foreach(i=1:length(possible_n))%dopar%{
-  if(sum(possible_n[[i]][,ncol(possible_n[[i]])])==minimum){
-    return(possible_n[[i]])
-  }
-} %&gt;% 
-  compact()
-##############  the generated list does not have geometry yet and I have not been able to add back
-#############   in but a prototype of how is below      
-
-out1&lt;-shapeobj2
-for(j in 1:nrow(shapeobj2)){
-  
-  for(k in 1:number){
-    
-    if(!(lapply(select(as.data.frame(shapeobj2[j,unique_name]),-geometry),as.character)%in%
-         lapply(best[[1]][k,unique_name],as.character))){
-      
-      for(l in 1:ncol(shapobj2[j,])){
-        out1[j,l]&lt;-NA
-      }
-    }
-    else{
-      
-      out1[j,]&lt;-shapeobj2[j,]
-      
-    }
-    
-  }
-} %&gt;% 
-out1&lt;-compact(out1)
-return(out1)
-
-
-  ###the resulting combinations
-####generated site list displayed in leaflet map and table 
-  ### downloadable option could be nice too.
-
-
-kable(best[[1]],label&lt;-&quot;best possible combination of n sites&quot;)
-
-
-
-####profit /s</code></pre>
 <p>this will eventually be incorperated as a shiny app</p>
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
-<pre><code>## Linking to GEOS 3.7.2, GDAL 3.0.1, PROJ 6.2.0</code></pre>
+<pre><code>## Linking to GEOS 3.8.0, GDAL 3.0.2, PROJ 6.2.1</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;dplyr&#39;</code></pre>
 <pre><code>## The following objects are masked from &#39;package:stats&#39;:
@@ -587,11 +399,11 @@ kable(best[[1]],label&lt;-&quot;best possible combination of n sites&quot;)
 <pre><code>## The following objects are masked from &#39;package:base&#39;:
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
-<pre><code>## ── Attaching packages ───────────────────────────────────────────────────────────── tidyverse 1.2.1 ──</code></pre>
-<pre><code>## ✔ ggplot2 3.2.0     ✔ readr   1.3.1
-## ✔ tibble  2.1.3     ✔ purrr   0.3.2
-## ✔ tidyr   0.8.3     ✔ stringr 1.4.0
-## ✔ ggplot2 3.2.0     ✔ forcats 0.4.0</code></pre>
+<pre><code>## ── Attaching packages ───────────────────────────────────────────────────────────── tidyverse 1.3.0 ──</code></pre>
+<pre><code>## ✔ ggplot2 3.2.1     ✔ purrr   0.3.3
+## ✔ tibble  2.1.3     ✔ stringr 1.4.0
+## ✔ tidyr   1.0.0     ✔ forcats 0.4.0
+## ✔ readr   1.3.1</code></pre>
 <pre><code>## ── Conflicts ──────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
 ## ✖ dplyr::filter() masks stats::filter()
 ## ✖ dplyr::lag()    masks stats::lag()</code></pre>
@@ -610,22 +422,30 @@ kable(best[[1]],label&lt;-&quot;best possible combination of n sites&quot;)
 ## bbox:           xmin: 161025.5 ymin: 4706563 xmax: 217831 ymax: 4777652
 ## epsg (SRID):    26918
 ## proj4string:    +proj=utm +zone=18 +datum=NAD83 +units=m +no_defs</code></pre>
-<pre><code>## Warning: attribute variables are assumed to be spatially constant
-## throughout all geometries</code></pre>
-<pre><code>## [1] 6.300541</code></pre>
+<pre><code>## Warning: attribute variables are assumed to be spatially constant throughout all
+## geometries</code></pre>
 <pre><code>## [1] &quot;best possible combination of n sites&quot;</code></pre>
-<pre><code>##                Program.Facility.Name DEC.Region Control.Code Contaminants
-## 1                          Chem-Trol          9            1            1
-## 2            Pfohl Brothers Landfill          9            1       203, 1
-## 3            Greif Bros. Corporation          9            1            1
-## 4 Tennessee Gas Pipeline Station 229          9         1, 5            1
-## 5    Niagara Transformer - Dale Road          9            1          192
-##   Site.Class ACRES       V7
-## 1         04 19.09 0.000000
-## 2         04 21.70 2.063986
-## 3         C  15.27 2.111176
-## 4         04 49.70 2.444977
-## 5         04  3.60 2.682680</code></pre>
+<pre><code>## Simple feature collection with 5 features and 9 fields
+## Attribute-geometry relationship: 0 constant, 8 aggregate, 0 identity, 1 NA&#39;s
+## geometry type:  POINT
+## dimension:      XY
+## bbox:           xmin: 179001 ymin: 4732059 xmax: 188990 ymax: 4767371
+## epsg (SRID):    26918
+## proj4string:    +proj=utm +zone=18 +datum=NAD83 +units=m +no_defs
+##                       Program.Facility.Name ACRES Contaminants Program.Type
+## 8                   3M O-Cel-O Sponge Plant  2.93            1            3
+## 68       Tennessee Gas Pipeline Station 229 49.70            1            3
+## 18                                Chem-Trol 19.09            1            3
+## 36 Iroquois Gas/Westwood Pharm. Terrestrial  4.54  1, 243, 129            3
+## 44             Niagara Mohawk - Cherry Farm 56.42          209            3
+##    DEC.Region Control.Code OU Site.Class                 geometry Score
+## 8           9         5, 1  2         04   POINT (180569 4765617)     0
+## 68          9         1, 5  2         04   POINT (186153 4732059)    40
+## 18          9            1  2         04   POINT (188990 4745442)    41
+## 36          9         5, 1  2         04 POINT (182352.6 4760503)    42
+## 44          9         1, 5  2         04   POINT (179001 4767371)    42</code></pre>
+<div id="htmlwidget-fcc89794ac1038bc868f" style="width:672px;height:480px;" class="leaflet html-widget"></div>
+<script type="application/json" data-for="htmlwidget-fcc89794ac1038bc868f">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"http://openstreetmap.org\">OpenStreetMap<\/a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA<\/a>"}]},{"method":"addCircleMarkers","args":[[42.97615737,42.67695649,42.79836345,42.930958333,42.99125582],[-78.91726355,-78.8302482,-78.80305177,-78.892538889,-78.93745514],10,null,null,{"interactive":true,"className":"","stroke":true,"color":"#03F","weight":5,"opacity":0.5,"fill":true,"fillColor":"#03F","fillOpacity":0.2},null,null,["3M O-Cel-O Sponge Plant","Tennessee Gas Pipeline Station 229","Chem-Trol","Iroquois Gas/Westwood Pharm. Terrestrial","Niagara Mohawk - Cherry Farm"],null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null]}],"limits":{"lat":[42.67695649,42.99125582],"lng":[-78.93745514,-78.80305177]}},"evals":[],"jsHooks":[]}</script>
 <p>leaflet map and table will eventually go here</p>
 </div>
 <div id="conclusions" class="section level1">
