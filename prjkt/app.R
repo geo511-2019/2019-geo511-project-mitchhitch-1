@@ -47,6 +47,7 @@ server <- function(input, output) {
         paste("You selected:",input$n_reps)
     })
 
+    
 }
 
 
