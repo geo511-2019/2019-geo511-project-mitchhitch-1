@@ -1,49 +1,52 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-# 
-# 
+##render is reactive
+
+
+
 library(shiny)
-library(datasets)
-library(miniUI)
+
 
 ui <- fluidPage(
-    titlePanel("Old Faithful Geyser Data"),
-    mainPanel(
-        actionButton("updater", "Update message"),
-        textOutput("textbox")
+    #Make into tabs
+    navbarPage(
+        "Best Rep",
+        tabPanel("Step 1",
+                 #Upload file
+                 #select number of reps desired
+                 numericInput("n_reps","How many replicates would you like?",value=30,min=2,max=300)
+                 ),
+        tabPanel("Step 2"
+                 #Select which columns you care about
+                 
+                 ),
+        tabPanel("Step 3"
+                 #Fixed variables within the columns
+                 
+                 #Run Button
+                 
+                 ),
+        tabPanel("Results",
+                 #leaflet
+                 #Table
+                 textOutput("test")
+                 
+                 )
     )
+    
+    
+    
 )
 
-
-glycoPipe <- function() {
-    start_time <- Sys.time()
-    list(
-        today      = weekdays(start_time, abbreviate = FALSE),
-        start_time = start_time
-    )
-}
-
+        
 
 server <- function(input, output) {
-    result <- glycoPipe()
-    start_time_text <- strftime(result$start_time, "%H:%M:%S")
     
-    output$textbox <- renderText({
-        input$updater
-        elapsed <- Sys.time() - result$start_time
-        sprintf(
-            "Started at %s on %s, which was %.0f seconds ago",
-            start_time_text,
-            result$today,
-            elapsed
-        )
+    #observe( on button press run the script from the values in place or set defaults.)
+    
+    output$plot<-leaflet()
+    output$test<- renderText({
+        paste("You selected:",input$n_reps)
     })
+
 }
 
 

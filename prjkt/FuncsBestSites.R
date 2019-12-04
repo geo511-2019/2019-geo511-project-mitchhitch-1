@@ -14,7 +14,6 @@ TransCoord_csv<-function(File1,FileX,FileX_Lon="Longitude",FileX_Lat="Latitude",
 }
 
 
-
 ### Join all files into 1 sf ONLY run afer TransCoord_csv or st_transform for shape files.
 All_F<-function(File1,...){
   OtherF<-list(...)
@@ -27,8 +26,6 @@ All_F<-function(File1,...){
   }
 
 }
-
-
 
 
 ###This ranks the similarit of rows
