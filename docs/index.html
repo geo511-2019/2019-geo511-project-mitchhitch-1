@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 
-<html>
+<html xmlns="http://www.w3.org/1999/xhtml">
 
 <head>
 
 <meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
@@ -14,7 +15,7 @@
 
 <title>Tool for identifing replicate field study locations</title>
 
-<script src="site_libs/jquery-1.12.4/jquery.min.js"></script>
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/simplex.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
@@ -24,16 +25,9 @@
 <link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
 <script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
-<script src="site_libs/htmlwidgets-1.5.1/htmlwidgets.js"></script>
-<link href="site_libs/leaflet-1.3.1/leaflet.css" rel="stylesheet" />
-<script src="site_libs/leaflet-1.3.1/leaflet.js"></script>
-<link href="site_libs/leafletfix-1.0.0/leafletfix.css" rel="stylesheet" />
-<script src="site_libs/Proj4Leaflet-1.0.1/proj4-compressed.js"></script>
-<script src="site_libs/Proj4Leaflet-1.0.1/proj4leaflet.js"></script>
-<link href="site_libs/rstudio_leaflet-1.3.1/rstudio_leaflet.css" rel="stylesheet" />
-<script src="site_libs/leaflet-binding-2.0.3/leaflet.js"></script>
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css">
@@ -244,7 +238,6 @@ $(document).ready(function () {
   border: none;
   display: inline-block;
   border-radius: 4px;
-  background-color: transparent;
 }
 
 .tabset-dropdown > .nav-tabs.nav-tabs-open > li {
@@ -258,6 +251,9 @@ $(document).ready(function () {
 </style>
 
 <!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
 
 
 
@@ -273,12 +269,6 @@ $(document).ready(function () {
 }
 }
 
-@media print {
-.toc-content {
-  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
-  float: right;
-}
-}
 
 .toc-content {
   padding-left: 30px;
@@ -370,6 +360,14 @@ div.tocify {
 
 <div class="fluid-row" id="header">
 
+<div class="btn-group pull-right">
+<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
 
 
 <h1 class="title toc-ignore">Tool for identifing replicate field study locations</h1>
@@ -385,75 +383,454 @@ div.tocify {
 </div>
 <div id="materials-and-methods" class="section level1">
 <h1>Materials and methods</h1>
-<p>SHINY CODE GOES HERE</p>
-<p>this will eventually be incorperated as a shiny app</p>
+<p>Datasets</p>
+<p><a href="http://gis.ny.gov/gisdata/fileserver/?DSID=1300&amp;file=Erie-Tax-Parcels-Centroid-Points-SHP.zip">Erie County tax parcels</a></p>
+<p><a href="https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&amp;sorting=true%22,%22data/points.csv">NYS Brownfields</a></p>
+<p>Additoinal data could come from USDA, USGS, NOAA, and NASA depending on variables of interest.</p>
+<p>Shiny code (in progress version at <a href="https://mitchhitch.shinyapps.io/prjkt/" class="uri">https://mitchhitch.shinyapps.io/prjkt/</a>)</p>
+<pre class="r"><code>##render is reactive
+
+
+
+library(shiny)
+library(leaflet)
+library(dplyr)
+library(tools)
+library(sf)
+library(sp)
+library(tidyverse)
+library(doParallel)
+library(nngeo)#st_nn
+library(stringr)
+
+
+
+ui &lt;- fluidPage(
+    #Make into tabs
+    navbarPage(
+        &quot;Best Rep&quot;,
+        tabPanel(&quot;Step 1&quot;,
+                 #Upload file1
+                 h2(&#39;Upload your files&#39;),
+                 textOutput(&quot;at least one must be a .shp file (.csv with headers and .shp only&quot;),
+                 fileInput(&#39;file1&#39;, &#39;This must be a shp&#39;),
+                 #upload file2
+                 fileInput(&#39;file2&#39;, &#39;Choose second file&#39;),
+                 #select number of reps desired
+                 numericInput(&quot;n_reps&quot;,&quot;How many replicates would you like?&quot;,value=30,min=2,max=300)
+                 ),
+        
+        tabPanel(&quot;Step 2&quot;,
+                 
+                 #Select which columns you care about backend in server
+                 uiOutput(&quot;SelectCols1&quot;),
+                 uiOutput(&quot;SelectCols2&quot;)
+                 
+                 
+                 ),
+        tabPanel(&quot;Step 3&quot;,
+                 #Fixed variables within the columns
+                 
+                 #Run Button
+                 actionButton(&quot;RUN&quot;, &quot;Click and walk away&quot;)
+                 ),
+        tabPanel(&quot;Results&quot;,
+                 #leaflet
+                 #Table
+                 leafletOutput(&quot;bestmap&quot;)
+
+                 
+                 )
+    )
+    
+    
+    
+    
+)
+
+        
+
+server &lt;- function(input, output,session) {
+    options(shiny.maxRequestSize=30000*1024^2)
+    
+    #################funcz
+    #####This should be run AFTER columns have been trimmed
+    TransCoord_csv&lt;-function(File1,FileX,FileX_Lon=&quot;Longitude&quot;,FileX_Lat=&quot;Latitude&quot;,FileX_crs=4326){
+        
+        FileX&lt;-st_as_sf(FileX,coords=c(FileX_Lon,FileX_Lat)) %&gt;% 
+            st_set_crs(FileX_crs) %&gt;% 
+            st_transform(st_crs(File1)) %&gt;% 
+            st_crop(st_bbox(File1))
+        FileX
+        
+    }
+    
+    
+    ### Join all files into 1 sf ONLY run afer TransCoord_csv or st_transform for shape files.
+    All_F&lt;-function(File1,File2){
+        # OtherF&lt;-list(...)
+        # countF&lt;-length(OtherF)
+        MainF&lt;-File1
+        # for(i in 1:countF){
+        #     MainF=st_join(OtherF[[1]],MainF,join=st_nn,k=1,maxdist=500) %&gt;% 
+        #         aggregate( by=list(.[,1]),FUN=unique,do_union=TRUE,join = st_intersects)
+        # }
+        File2&lt;-File2
+        MainF=st_join(File2,MainF,join=st_nn,k=1,maxdist=500) %&gt;% 
+            aggregate( by=list(.$Program.Facility.Name),FUN=unique,do_union=TRUE,join = st_intersects)
+        MainF
+        
+    }
+    
+    ###runs the itterative ranking
+    Run.score&lt;-function(shapeobj_trim,number){
+        number=number
+        foreach(r=1:nrow(shapeobj_trim))%dopar%{
+            x&lt;-shapeobj_trim %&gt;% 
+                select(-geometry)
+            x_ret&lt;-shapeobj_trim
+            for(i in 1:nrow(x)){
+                
+                x_ret[i,&quot;Score&quot;]&lt;-score.calc(x[r,],x[i,])
+                
+            }
+            
+            x_ret&lt;-head(x_ret[order(x_ret$Score),],n=number)
+            x_ret
+        }
+    }
+    
+    ###This ranks the similarit of rows
+    score.calc&lt;-function(rowprime,rowtest){
+        
+        colscore&lt;-vector(length=length(rowprime))
+        for(i in 1:ncol(rowprime)){
+            prime&lt;-rowprime[i]
+            if(is.list(prime)){
+                prime&lt;-unlist(prime)
+            }
+            test&lt;-rowtest[i]
+            if(is.list(test)){
+                test&lt;-unlist(test)
+            }
+            if(length(prime)&gt;1||length(test)&gt;1){
+                colscore[i]&lt;-as.double(length(c(
+                    setdiff(prime,test),
+                    setdiff(test,prime)))
+                )
+                
+            }
+            else if(is.double(prime)||is.numeric(prime)){
+                colscore[i]&lt;-as.double(abs((prime-test)/(prime+test)))
+                
+            }
+            else if(is.factor(prime)||is.character(prime)){
+                if(prime==test){
+                    colscore[i]&lt;-0
+                    
+                }
+                else{
+                    colscore[i]&lt;-1
+                    
+                }
+            }
+            else 
+                colscore[i]&lt;-NA
+        }
+        
+        return(sum(colscore))
+    }
+    
+    
+    ###Select best sets of sites
+    Out_best&lt;-function(possible_n){
+        #Determine min possible value for sets
+        minimum&lt;-foreach(i=1:length(possible_n),.combine=c)%dopar%{
+            sum(possible_n[[i]]$Score)
+        } %&gt;% 
+            min()
+        #Select sets with min possible value
+        best&lt;-foreach(i=1:length(possible_n))%dopar%{
+            if(sum(possible_n[[i]]$Score)==minimum){
+                return(possible_n[[i]])
+            }
+        } %&gt;% 
+            compact()
+        
+        best
+        
+    }
+    ##########################3
+    ###File1
+    data1&lt;- reactive({
+        withProgress(message = &#39;Loading Files&#39;, value = 0, {
+            n&lt;-4
+            incProgress(1/n, detail = paste(&quot;Uploading&quot;, 1))
+            filein &lt;- input$file1
+            if (is.null(filein)) { 
+                return() 
+            } 
+            else if (file_ext(filein$datapath)==&quot;csv&quot;){
+                incProgress(1/n, detail = paste(&quot;Reading csv&quot;, 2))
+                data = read.csv(file=filein$datapath)
+                incProgress(1/n, detail = paste(&quot;csv Read&quot;, 3))
+                return(data)
+            }
+            else if (!is.null(filein)){
+                incProgress(1/n, detail = paste(&quot;Unzipping&quot;, 2))    
+                prevWD &lt;- getwd()
+                unlink(&quot;unzipped&quot;, recursive = TRUE)
+                dir.create(&quot;unzipped&quot;)
+                tempdir &lt;- &quot;unzipped&quot;
+                unzip(filein$datapath, exdir = tempdir)
+                setwd(tempdir)
+                if(length(list.dirs(recursive=FALSE))&gt;0){
+                    setwd(list.dirs(recursive = FALSE))
+                }
+                else{
+                    print(&quot;in correct wd&quot;)
+                }
+                shpName &lt;- list.files()[grep(list.files(),pattern=&quot;*.shp&quot;)[1]]
+                incProgress(1/n, detail = paste(&quot;Reading shape file&quot;, 3))
+                shpFile &lt;- st_read(shpName)
+                return(shpFile)
+            } 
+            else {
+                return()
+            }
+            incProgress(1/n, detail = paste(&quot;Read&quot;, 4))
+        })
+        
+    })
+    
+    
+    ###File2
+    data2 &lt;- reactive({
+        withProgress(message = &#39;Loading Files&#39;, value = 0, {
+        n&lt;-4
+            incProgress(1/n, detail = paste(&quot;Uploading&quot;, 1))
+        filein &lt;- input$file2
+        if (is.null(filein)) { 
+            return() 
+        } 
+        else if (file_ext(filein$datapath)==&quot;csv&quot;){
+            incProgress(1/n, detail = paste(&quot;Reading csv&quot;, 2))
+            data = read.csv(file=filein$datapath)
+            incProgress(1/n, detail = paste(&quot;csv Read&quot;, 3))
+            return(data)
+        }
+        else if (!is.null(filein)){
+            incProgress(1/n, detail = paste(&quot;Unzipping&quot;, 2))    
+            prevWD &lt;- getwd()
+            unlink(&quot;unzipped&quot;, recursive = TRUE)
+            dir.create(&quot;unzipped&quot;)
+            tempdir &lt;- &quot;unzipped&quot;
+            unzip(filein$datapath, exdir = tempdir)
+            setwd(tempdir)
+            if(length(list.dirs(recursive=FALSE))&gt;0){
+                setwd(list.dirs(recursive = FALSE))
+            }
+            else{
+                print(&quot;in correct wd&quot;)
+            }
+            shpName &lt;- list.files()[grep(list.files(),pattern=&quot;*.shp&quot;)[1]]
+            incProgress(1/n, detail = paste(&quot;Reading shape file&quot;, 3))
+            shpFile &lt;- st_read(shpName)
+            return(shpFile)
+        } 
+        else {
+            return()
+            }
+        incProgress(1/n, detail = paste(&quot;Read&quot;, 4))
+        })
+
+    })
+ 
+    ##This is just a demo table for File1
+    # output$table_display &lt;- renderTable({
+    #     f &lt;- data1()
+    #     f &lt;- select(f, c(input$columns1)) #subsetting takes place here
+    #     head(f)
+    # })
+    
+
+    ###This allows for selecting desired columns
+    ##File1
+    output$SelectCols1 &lt;- renderUI({
+        selectInput(&quot;columns1&quot;, &quot;Select Columns&quot;, choices= names(data1()),multiple = TRUE)
+    })
+    ##File2
+    output$SelectCols2 &lt;- renderUI({
+        selectInput(&quot;columns2&quot;, &quot;Select Columns&quot;, choices= names(data2()),multiple = TRUE)
+    })
+    
+    
+    
+    RealRun&lt;-eventReactive(input$RUN,{ 
+        withProgress(message = &#39;Running Comparison&#39;, value = 0, {
+        # Number of steps
+        n &lt;- 10
+        
+        req(input$columns1)
+        req(input$columns2)
+        number&lt;-input$n_reps
+        incProgress(1/n, detail = paste(&quot;Doing part&quot;, 1))
+        registerDoParallel(cores = 6)
+        incProgress(1/n, detail = paste(&quot;Doing part&quot;, 2))
+        
+        incProgress(1/n, detail = paste(&quot;Doing part&quot;, 3))
+        
+        data1_trim&lt;-select(data1(), input$columns1)
+        incProgress(1/n, detail = paste(&quot;Doing part&quot;, 4))
+        rm(data1())
+        data2_trim&lt;-select(data2(), input$columns2)
+        incProgress(1/n, detail = paste(&quot;Doing part&quot;, 5))
+        rm(data2())
+        data2_tran&lt;-TransCoord_csv(data1_trim,data2_trim)
+        incProgress(1/n, detail = paste(&quot;Doing part&quot;, 6))
+        rm(data2_trim)
+        data_ALL&lt;-All_F(data1_trim,data2_tran)
+        incProgress(1/n, detail = paste(&quot;Doing part&quot;, 7))
+        rm(data1_trim,data2_tran)
+        Ranked_list&lt;-Run.score(data_ALL,number)
+        incProgress(1/n, detail = paste(&quot;Doing part&quot;, 8))
+        rm(data_ALL)
+        best&lt;-Out_best(Ranked_list)
+        incProgress(1/n, detail = paste(&quot;Doing part&quot;, 9))
+        rm(Ranked_list)
+        first&lt;-st_transform(best[[1]],&#39;+proj=longlat +datum=WGS84&#39;)
+        incProgress(1/n, detail = paste(&quot;Doing part&quot;, 10))
+        
+        first
+        })
+    })
+    
+    output$bestmap &lt;- renderLeaflet({
+        
+        leaflet() %&gt;% 
+            addTiles() %&gt;% 
+            addCircleMarkers(data = st_geometry(RealRun()), popup=first$Program.Facility.Name)
+        
+    })
+    
+    
+    #observe( on button press run the script from the values in place or set defaults.)
+
+    
+}
+
+
+shinyApp(ui = ui, server = server)</code></pre>
+<p>Core Functions:</p>
+<p>Transform crs and set bounding box to same area</p>
+<pre class="r"><code>TransCoord_csv&lt;-function(File1,FileX,FileX_Lon=&quot;Longitude&quot;,FileX_Lat=&quot;Latitude&quot;,FileX_crs=4326){
+  
+  FileX&lt;-st_as_sf(FileX,coords=c(FileX_Lon,FileX_Lat)) %&gt;% 
+    st_set_crs(FileX_crs) %&gt;% 
+    st_transform(st_crs(File1)) %&gt;% 
+    st_crop(st_bbox(File1))
+  FileX
+  
+}</code></pre>
+<p>Join all uploaded files together</p>
+<pre class="r"><code>All_F&lt;-function(File1,...){
+  OtherF&lt;-list(...)
+  countF&lt;-length(OtherF)
+  MainF&lt;-File1
+  for(i in 1:countF){
+    MainF=st_join(OtherF[[1]],MainF,join=st_nn,k=1,maxdist=500) %&gt;% 
+      aggregate( by=list(.[,1]),FUN=unique,do_union=TRUE,join = st_intersects)
+    
+  }
+
+}</code></pre>
+<p>Rank all the rows based on each field</p>
+<pre class="r"><code>score.calc&lt;-function(rowprime,rowtest){
+  
+  colscore&lt;-vector(length=length(rowprime))
+  for(i in 1:ncol(rowprime)){
+    prime&lt;-rowprime[i]
+    if(is.list(prime)){
+      prime&lt;-unlist(prime)
+    }
+    test&lt;-rowtest[i]
+    if(is.list(test)){
+      test&lt;-unlist(test)
+    }
+    if(length(prime)&gt;1||length(test)&gt;1){
+      colscore[i]&lt;-as.double(length(c(
+        setdiff(prime,test),
+        setdiff(test,prime)))
+      )
+      
+    }
+    else if(is.double(prime)||is.numeric(prime)){
+      colscore[i]&lt;-as.double(abs((prime-test)/(prime+test)))
+      
+    }
+    else if(is.factor(prime)||is.character(prime)){
+      if(prime==test){
+        colscore[i]&lt;-0
+        
+      }
+      else{
+        colscore[i]&lt;-1
+        
+      }
+    }
+    else 
+      colscore[i]&lt;-NA
+  }
+  
+  return(sum(colscore))
+}</code></pre>
+<p>Itterate over every possible combination and combine into a list of each sites best matches</p>
+<pre class="r"><code>Run.score&lt;-function(shapeobj_trim){
+foreach(r=1:nrow(shapeobj_trim))%dopar%{
+  x&lt;-shapeobj_trim %&gt;% 
+    select(-geometry)
+  x_ret&lt;-shapeobj_trim
+  for(i in 1:nrow(x)){
+    
+    x_ret[i,&quot;Score&quot;]&lt;-score.calc(x[r,],x[i,])
+    
+  }
+  
+  x_ret&lt;-head(x_ret[order(x_ret$Score),],n=number)
+  x_ret
+}
+}</code></pre>
+<p>Select the best site combination (ties acceptable)</p>
+<pre class="r"><code>Out_best&lt;-function(possible_n){
+  #Determine min possible value for sets
+minimum&lt;-foreach(i=1:length(possible_n),.combine=c)%dopar%{
+  sum(possible_n[[i]]$Score)
+} %&gt;% 
+  min()
+  #Select sets with min possible value
+best&lt;-foreach(i=1:length(possible_n))%dopar%{
+  if(sum(possible_n[[i]]$Score)==minimum){
+    return(possible_n[[i]])
+  }
+} %&gt;% 
+  compact()
+
+best
+
+}</code></pre>
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
-<pre><code>## Linking to GEOS 3.8.0, GDAL 3.0.2, PROJ 6.2.1</code></pre>
-<pre><code>## 
-## Attaching package: &#39;dplyr&#39;</code></pre>
-<pre><code>## The following objects are masked from &#39;package:stats&#39;:
-## 
-##     filter, lag</code></pre>
-<pre><code>## The following objects are masked from &#39;package:base&#39;:
-## 
-##     intersect, setdiff, setequal, union</code></pre>
-<pre><code>## ── Attaching packages ───────────────────────────────────────────────────────────── tidyverse 1.3.0 ──</code></pre>
-<pre><code>## ✔ ggplot2 3.2.1     ✔ purrr   0.3.3
-## ✔ tibble  2.1.3     ✔ stringr 1.4.0
-## ✔ tidyr   1.0.0     ✔ forcats 0.4.0
-## ✔ readr   1.3.1</code></pre>
-<pre><code>## ── Conflicts ──────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
-## ✖ dplyr::filter() masks stats::filter()
-## ✖ dplyr::lag()    masks stats::lag()</code></pre>
-<pre><code>## Loading required package: foreach</code></pre>
-<pre><code>## 
-## Attaching package: &#39;foreach&#39;</code></pre>
-<pre><code>## The following objects are masked from &#39;package:purrr&#39;:
-## 
-##     accumulate, when</code></pre>
-<pre><code>## Loading required package: iterators</code></pre>
-<pre><code>## Loading required package: parallel</code></pre>
-<pre><code>## Reading layer `Erie_2018_Tax_Parcel_Centroid_Points_SHP&#39; from data source `/home/tiwaz/Desktop/UBfall2019/spatdatanaly/GEO511finlprjkt/data/Erie/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp&#39; using driver `ESRI Shapefile&#39;
-## Simple feature collection with 363784 features and 70 fields
-## geometry type:  POINT
-## dimension:      XY
-## bbox:           xmin: 161025.5 ymin: 4706563 xmax: 217831 ymax: 4777652
-## epsg (SRID):    26918
-## proj4string:    +proj=utm +zone=18 +datum=NAD83 +units=m +no_defs</code></pre>
-<pre><code>## Warning: attribute variables are assumed to be spatially constant throughout all
-## geometries</code></pre>
-<pre><code>## [1] &quot;best possible combination of n sites&quot;</code></pre>
-<pre><code>## Simple feature collection with 5 features and 9 fields
-## Attribute-geometry relationship: 0 constant, 8 aggregate, 0 identity, 1 NA&#39;s
-## geometry type:  POINT
-## dimension:      XY
-## bbox:           xmin: 179001 ymin: 4732059 xmax: 188990 ymax: 4767371
-## epsg (SRID):    26918
-## proj4string:    +proj=utm +zone=18 +datum=NAD83 +units=m +no_defs
-##                       Program.Facility.Name ACRES Contaminants Program.Type
-## 8                   3M O-Cel-O Sponge Plant  2.93            1            3
-## 68       Tennessee Gas Pipeline Station 229 49.70            1            3
-## 18                                Chem-Trol 19.09            1            3
-## 36 Iroquois Gas/Westwood Pharm. Terrestrial  4.54  1, 243, 129            3
-## 44             Niagara Mohawk - Cherry Farm 56.42          209            3
-##    DEC.Region Control.Code OU Site.Class                 geometry Score
-## 8           9         5, 1  2         04   POINT (180569 4765617)     0
-## 68          9         1, 5  2         04   POINT (186153 4732059)    40
-## 18          9            1  2         04   POINT (188990 4745442)    41
-## 36          9         5, 1  2         04 POINT (182352.6 4760503)    42
-## 44          9         1, 5  2         04   POINT (179001 4767371)    42</code></pre>
-<div id="htmlwidget-fcc89794ac1038bc868f" style="width:672px;height:480px;" class="leaflet html-widget"></div>
-<script type="application/json" data-for="htmlwidget-fcc89794ac1038bc868f">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"http://openstreetmap.org\">OpenStreetMap<\/a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA<\/a>"}]},{"method":"addCircleMarkers","args":[[42.97615737,42.67695649,42.79836345,42.930958333,42.99125582],[-78.91726355,-78.8302482,-78.80305177,-78.892538889,-78.93745514],10,null,null,{"interactive":true,"className":"","stroke":true,"color":"#03F","weight":5,"opacity":0.5,"fill":true,"fillColor":"#03F","fillOpacity":0.2},null,null,["3M O-Cel-O Sponge Plant","Tennessee Gas Pipeline Station 229","Chem-Trol","Iroquois Gas/Westwood Pharm. Terrestrial","Niagara Mohawk - Cherry Farm"],null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null]}],"limits":{"lat":[42.67695649,42.99125582],"lng":[-78.93745514,-78.80305177]}},"evals":[],"jsHooks":[]}</script>
-<p>leaflet map and table will eventually go here</p>
 </div>
 <div id="conclusions" class="section level1">
 <h1>Conclusions</h1>
+<p>Although this tool is unfinished it is promising. The flexibility of this tool will allow it to go beyond the example given here. Another possible use in consideration is identifying locations in a greenhouse with least amount of wind, light, and temperature variability. A major drawback is that this code as it stands is computationally intensive and prohibitive for use on personal computers. A solution to this would be to optimize the algorithms and/or host on a server.</p>
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>
 <p>Eberhardt, L. L., and J. M. Thomas. 1991. Designing Environmental Field Studies. Ecological Monographs 61:53–73.</p>
+<p><a href="https://data.ny.gov/" class="uri">https://data.ny.gov/</a></p>
+<p><a href="http://gis.ny.gov/" class="uri">http://gis.ny.gov/</a></p>
 </div>
 
 <!-- give the footer some space -->
@@ -504,6 +881,11 @@ $(document).ready(function () {
 </script>
 
 <!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
 
 <script>
 $(document).ready(function ()  {

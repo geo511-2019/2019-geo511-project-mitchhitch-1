@@ -1,0 +1,13 @@
+name: prjkt
+title: prjkt
+username:
+account: mitchhitch
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1566699
+bundleId: 2644214
+url: https://mitchhitch.shinyapps.io/prjkt/
+when: 1575564699.39052
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: Environmental_Remediation_Sites.csv|FuncsBestSites.R|prjktdoc.Rmd|Sources|temp.Rmd|teststuff.R

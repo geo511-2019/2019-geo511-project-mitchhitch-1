@@ -2,7 +2,9 @@
 title: "Tool for identifing replicate field study locations"
 author: Mitchell Hitchcock
 subtitle: "Demonstrated with Erie County brownfields"
-output: html
+output:
+  html_document:
+    code_folding: hide
 ---
 ```{r setup, include=FALSE}
 library(knitr)
@@ -10,22 +12,492 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 # Introduction
 
-Replicated experiments are well known to have the highest power for statistical inference. However, this has rarely been properly implemented in field studies and numerous techniques have been devised to alleviate this challenge while avoiding psuedoreplication (Eberhardt and Thomas 1991).   Due to the power (lower typeII error) of large replicate studies it would be desirable to develop a method for conducting such studies in field experiments so as to derive stronger inferences. Higher power is of equal interest to Bayesian analysis as it is to frequentest but discussion of either is outside the scope of this work save that it benefits all. The purpose of this project is to develop a tool for alleviating the first step which is identifying plausible replicate sites by using existing locations. It is possible to deal with uncontrolled variables through large numbers of replicates but the more uncontrolled and higher variation the variables are the more replicates are needed. This tool uses the large amounts of environmental data widely available to filter through locations and identify a desired number of replicates which are most similar given a set of variables. This tool is designed to be dynamic by allowing for multiple spatial data sets to be imported and desired variables to be filtered for. 
+Replicated experiments are well known to have the highest power for statistical inference. However, this has rarely been properly implemented in field studies and numerous techniques have been devised to alleviate this challenge while avoiding psuedoreplication (Eberhardt and Thomas 1991). Due to the power (lower typeII error) of large replicate studies it would be desirable to develop a method for conducting such studies in field experiments so as to derive stronger inferences. Higher power is of equal interest to Bayesian analysis as it is to frequentest but discussion of either is outside the scope of this work save that it benefits all. The purpose of this project is to develop a tool for alleviating the first step which is identifying plausible replicate sites by using existing locations. It is possible to deal with uncontrolled variables through large numbers of replicates but the more uncontrolled and higher variation the variables are the more replicates are needed. This tool uses the large amounts of environmental data widely available to filter through locations and identify a desired number of replicates which are most similar given a set of variables. This tool is designed to be dynamic by allowing for multiple spatial data sets to be imported and desired variables to be filtered for. 
 
 
 
 # Materials and methods
 
-SHINY CODE GOES HERE
 
-this will eventually be incorperated as a shiny app
+Datasets
+
+[Erie County tax parcels](http://gis.ny.gov/gisdata/fileserver/?DSID=1300&file=Erie-Tax-Parcels-Centroid-Points-SHP.zip)
+
+[NYS Brownfields](https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&sorting=true","data/points.csv)
+
+Additoinal data could come from USDA, USGS, NOAA, and NASA depending on variables of interest.
+
+
+Shiny code (in progress version at https://mitchhitch.shinyapps.io/prjkt/)
+
+```{r shiny_code, eval=FALSE}
+
+##render is reactive
+
+
+
+library(shiny)
+library(leaflet)
+library(dplyr)
+library(tools)
+library(sf)
+library(sp)
+library(tidyverse)
+library(doParallel)
+library(nngeo)#st_nn
+library(stringr)
+
+
+
+ui <- fluidPage(
+    #Make into tabs
+    navbarPage(
+        "Best Rep",
+        tabPanel("Step 1",
+                 #Upload file1
+                 h2('Upload your files'),
+                 textOutput("at least one must be a .shp file (.csv with headers and .shp only"),
+                 fileInput('file1', 'This must be a shp'),
+                 #upload file2
+                 fileInput('file2', 'Choose second file'),
+                 #select number of reps desired
+                 numericInput("n_reps","How many replicates would you like?",value=30,min=2,max=300)
+                 ),
+        
+        tabPanel("Step 2",
+                 
+                 #Select which columns you care about backend in server
+                 uiOutput("SelectCols1"),
+                 uiOutput("SelectCols2")
+                 
+                 
+                 ),
+        tabPanel("Step 3",
+                 #Fixed variables within the columns
+                 
+                 #Run Button
+                 actionButton("RUN", "Click and walk away")
+                 ),
+        tabPanel("Results",
+                 #leaflet
+                 #Table
+                 leafletOutput("bestmap")
+
+                 
+                 )
+    )
+    
+    
+    
+    
+)
+
+        
+
+server <- function(input, output,session) {
+    options(shiny.maxRequestSize=30000*1024^2)
+    
+    #################funcz
+    #####This should be run AFTER columns have been trimmed
+    TransCoord_csv<-function(File1,FileX,FileX_Lon="Longitude",FileX_Lat="Latitude",FileX_crs=4326){
+        
+        FileX<-st_as_sf(FileX,coords=c(FileX_Lon,FileX_Lat)) %>% 
+            st_set_crs(FileX_crs) %>% 
+            st_transform(st_crs(File1)) %>% 
+            st_crop(st_bbox(File1))
+        FileX
+        
+    }
+    
+    
+    ### Join all files into 1 sf ONLY run afer TransCoord_csv or st_transform for shape files.
+    All_F<-function(File1,File2){
+        # OtherF<-list(...)
+        # countF<-length(OtherF)
+        MainF<-File1
+        # for(i in 1:countF){
+        #     MainF=st_join(OtherF[[1]],MainF,join=st_nn,k=1,maxdist=500) %>% 
+        #         aggregate( by=list(.[,1]),FUN=unique,do_union=TRUE,join = st_intersects)
+        # }
+        File2<-File2
+        MainF=st_join(File2,MainF,join=st_nn,k=1,maxdist=500) %>% 
+            aggregate( by=list(.$Program.Facility.Name),FUN=unique,do_union=TRUE,join = st_intersects)
+        MainF
+        
+    }
+    
+    ###runs the itterative ranking
+    Run.score<-function(shapeobj_trim,number){
+        number=number
+        foreach(r=1:nrow(shapeobj_trim))%dopar%{
+            x<-shapeobj_trim %>% 
+                select(-geometry)
+            x_ret<-shapeobj_trim
+            for(i in 1:nrow(x)){
+                
+                x_ret[i,"Score"]<-score.calc(x[r,],x[i,])
+                
+            }
+            
+            x_ret<-head(x_ret[order(x_ret$Score),],n=number)
+            x_ret
+        }
+    }
+    
+    ###This ranks the similarit of rows
+    score.calc<-function(rowprime,rowtest){
+        
+        colscore<-vector(length=length(rowprime))
+        for(i in 1:ncol(rowprime)){
+            prime<-rowprime[i]
+            if(is.list(prime)){
+                prime<-unlist(prime)
+            }
+            test<-rowtest[i]
+            if(is.list(test)){
+                test<-unlist(test)
+            }
+            if(length(prime)>1||length(test)>1){
+                colscore[i]<-as.double(length(c(
+                    setdiff(prime,test),
+                    setdiff(test,prime)))
+                )
+                
+            }
+            else if(is.double(prime)||is.numeric(prime)){
+                colscore[i]<-as.double(abs((prime-test)/(prime+test)))
+                
+            }
+            else if(is.factor(prime)||is.character(prime)){
+                if(prime==test){
+                    colscore[i]<-0
+                    
+                }
+                else{
+                    colscore[i]<-1
+                    
+                }
+            }
+            else 
+                colscore[i]<-NA
+        }
+        
+        return(sum(colscore))
+    }
+    
+    
+    ###Select best sets of sites
+    Out_best<-function(possible_n){
+        #Determine min possible value for sets
+        minimum<-foreach(i=1:length(possible_n),.combine=c)%dopar%{
+            sum(possible_n[[i]]$Score)
+        } %>% 
+            min()
+        #Select sets with min possible value
+        best<-foreach(i=1:length(possible_n))%dopar%{
+            if(sum(possible_n[[i]]$Score)==minimum){
+                return(possible_n[[i]])
+            }
+        } %>% 
+            compact()
+        
+        best
+        
+    }
+    ##########################3
+    ###File1
+    data1<- reactive({
+        withProgress(message = 'Loading Files', value = 0, {
+            n<-4
+            incProgress(1/n, detail = paste("Uploading", 1))
+            filein <- input$file1
+            if (is.null(filein)) { 
+                return() 
+            } 
+            else if (file_ext(filein$datapath)=="csv"){
+                incProgress(1/n, detail = paste("Reading csv", 2))
+                data = read.csv(file=filein$datapath)
+                incProgress(1/n, detail = paste("csv Read", 3))
+                return(data)
+            }
+            else if (!is.null(filein)){
+                incProgress(1/n, detail = paste("Unzipping", 2))    
+                prevWD <- getwd()
+                unlink("unzipped", recursive = TRUE)
+                dir.create("unzipped")
+                tempdir <- "unzipped"
+                unzip(filein$datapath, exdir = tempdir)
+                setwd(tempdir)
+                if(length(list.dirs(recursive=FALSE))>0){
+                    setwd(list.dirs(recursive = FALSE))
+                }
+                else{
+                    print("in correct wd")
+                }
+                shpName <- list.files()[grep(list.files(),pattern="*.shp")[1]]
+                incProgress(1/n, detail = paste("Reading shape file", 3))
+                shpFile <- st_read(shpName)
+                return(shpFile)
+            } 
+            else {
+                return()
+            }
+            incProgress(1/n, detail = paste("Read", 4))
+        })
+        
+    })
+    
+    
+    ###File2
+    data2 <- reactive({
+        withProgress(message = 'Loading Files', value = 0, {
+        n<-4
+            incProgress(1/n, detail = paste("Uploading", 1))
+        filein <- input$file2
+        if (is.null(filein)) { 
+            return() 
+        } 
+        else if (file_ext(filein$datapath)=="csv"){
+            incProgress(1/n, detail = paste("Reading csv", 2))
+            data = read.csv(file=filein$datapath)
+            incProgress(1/n, detail = paste("csv Read", 3))
+            return(data)
+        }
+        else if (!is.null(filein)){
+            incProgress(1/n, detail = paste("Unzipping", 2))    
+            prevWD <- getwd()
+            unlink("unzipped", recursive = TRUE)
+            dir.create("unzipped")
+            tempdir <- "unzipped"
+            unzip(filein$datapath, exdir = tempdir)
+            setwd(tempdir)
+            if(length(list.dirs(recursive=FALSE))>0){
+                setwd(list.dirs(recursive = FALSE))
+            }
+            else{
+                print("in correct wd")
+            }
+            shpName <- list.files()[grep(list.files(),pattern="*.shp")[1]]
+            incProgress(1/n, detail = paste("Reading shape file", 3))
+            shpFile <- st_read(shpName)
+            return(shpFile)
+        } 
+        else {
+            return()
+            }
+        incProgress(1/n, detail = paste("Read", 4))
+        })
+
+    })
+ 
+    ##This is just a demo table for File1
+    # output$table_display <- renderTable({
+    #     f <- data1()
+    #     f <- select(f, c(input$columns1)) #subsetting takes place here
+    #     head(f)
+    # })
+    
+
+    ###This allows for selecting desired columns
+    ##File1
+    output$SelectCols1 <- renderUI({
+        selectInput("columns1", "Select Columns", choices= names(data1()),multiple = TRUE)
+    })
+    ##File2
+    output$SelectCols2 <- renderUI({
+        selectInput("columns2", "Select Columns", choices= names(data2()),multiple = TRUE)
+    })
+    
+    
+    
+    RealRun<-eventReactive(input$RUN,{ 
+        withProgress(message = 'Running Comparison', value = 0, {
+        # Number of steps
+        n <- 10
+        
+        req(input$columns1)
+        req(input$columns2)
+        number<-input$n_reps
+        incProgress(1/n, detail = paste("Doing part", 1))
+        registerDoParallel(cores = 6)
+        incProgress(1/n, detail = paste("Doing part", 2))
+        
+        incProgress(1/n, detail = paste("Doing part", 3))
+        
+        data1_trim<-select(data1(), input$columns1)
+        incProgress(1/n, detail = paste("Doing part", 4))
+        rm(data1())
+        data2_trim<-select(data2(), input$columns2)
+        incProgress(1/n, detail = paste("Doing part", 5))
+        rm(data2())
+        data2_tran<-TransCoord_csv(data1_trim,data2_trim)
+        incProgress(1/n, detail = paste("Doing part", 6))
+        rm(data2_trim)
+        data_ALL<-All_F(data1_trim,data2_tran)
+        incProgress(1/n, detail = paste("Doing part", 7))
+        rm(data1_trim,data2_tran)
+        Ranked_list<-Run.score(data_ALL,number)
+        incProgress(1/n, detail = paste("Doing part", 8))
+        rm(data_ALL)
+        best<-Out_best(Ranked_list)
+        incProgress(1/n, detail = paste("Doing part", 9))
+        rm(Ranked_list)
+        first<-st_transform(best[[1]],'+proj=longlat +datum=WGS84')
+        incProgress(1/n, detail = paste("Doing part", 10))
+        
+        first
+        })
+    })
+    
+    output$bestmap <- renderLeaflet({
+        
+        leaflet() %>% 
+            addTiles() %>% 
+            addCircleMarkers(data = st_geometry(RealRun()), popup=first$Program.Facility.Name)
+        
+    })
+    
+    
+    #observe( on button press run the script from the values in place or set defaults.)
+
+
+    
+}
+
+
+shinyApp(ui = ui, server = server)
+
+```
+
+
+Core Functions:
+
+Transform crs and set bounding box to same area
+```{r transform, eval=FALSE}
+
+TransCoord_csv<-function(File1,FileX,FileX_Lon="Longitude",FileX_Lat="Latitude",FileX_crs=4326){
+  
+  FileX<-st_as_sf(FileX,coords=c(FileX_Lon,FileX_Lat)) %>% 
+    st_set_crs(FileX_crs) %>% 
+    st_transform(st_crs(File1)) %>% 
+    st_crop(st_bbox(File1))
+  FileX
+  
+}
+
+```
+
+Join all uploaded files together
+```{r join, eval=FALSE}
+
+All_F<-function(File1,...){
+  OtherF<-list(...)
+  countF<-length(OtherF)
+  MainF<-File1
+  for(i in 1:countF){
+    MainF=st_join(OtherF[[1]],MainF,join=st_nn,k=1,maxdist=500) %>% 
+      aggregate( by=list(.[,1]),FUN=unique,do_union=TRUE,join = st_intersects)
+    
+  }
+
+}
+```
+
+Rank all the rows based on each field
+```{r rank, eval=FALSE}
+
+score.calc<-function(rowprime,rowtest){
+  
+  colscore<-vector(length=length(rowprime))
+  for(i in 1:ncol(rowprime)){
+    prime<-rowprime[i]
+    if(is.list(prime)){
+      prime<-unlist(prime)
+    }
+    test<-rowtest[i]
+    if(is.list(test)){
+      test<-unlist(test)
+    }
+    if(length(prime)>1||length(test)>1){
+      colscore[i]<-as.double(length(c(
+        setdiff(prime,test),
+        setdiff(test,prime)))
+      )
+      
+    }
+    else if(is.double(prime)||is.numeric(prime)){
+      colscore[i]<-as.double(abs((prime-test)/(prime+test)))
+      
+    }
+    else if(is.factor(prime)||is.character(prime)){
+      if(prime==test){
+        colscore[i]<-0
+        
+      }
+      else{
+        colscore[i]<-1
+        
+      }
+    }
+    else 
+      colscore[i]<-NA
+  }
+  
+  return(sum(colscore))
+}
+
+```
+
+Itterate over every possible combination and combine into a list of each sites best matches
+```{r itterate, eval=FALSE}
+
+Run.score<-function(shapeobj_trim){
+foreach(r=1:nrow(shapeobj_trim))%dopar%{
+  x<-shapeobj_trim %>% 
+    select(-geometry)
+  x_ret<-shapeobj_trim
+  for(i in 1:nrow(x)){
+    
+    x_ret[i,"Score"]<-score.calc(x[r,],x[i,])
+    
+  }
+  
+  x_ret<-head(x_ret[order(x_ret$Score),],n=number)
+  x_ret
+}
+}
+```
+
+Select the best site combination (ties acceptable)
+```{r best, eval=FALSE}
+
+Out_best<-function(possible_n){
+  #Determine min possible value for sets
+minimum<-foreach(i=1:length(possible_n),.combine=c)%dopar%{
+  sum(possible_n[[i]]$Score)
+} %>% 
+  min()
+  #Select sets with min possible value
+best<-foreach(i=1:length(possible_n))%dopar%{
+  if(sum(possible_n[[i]]$Score)==minimum){
+    return(possible_n[[i]])
+  }
+} %>% 
+  compact()
+
+best
+
+}
+
+```
+
 
 
 
 # Results
 
 
-```{r actual_run, echo=FALSE}
+```{r actual_run, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
 
 library(sf)
 library(sp)
@@ -34,6 +506,9 @@ library(tidyverse)
 library(doParallel)
 library(nngeo)#st_nn
 library(leaflet)
+library(knitr)
+library(DT)
+library(xtable)
 
 
 ####user input data (demo below) would like to add in soils and climate data but for now KISS
@@ -41,12 +516,12 @@ library(leaflet)
 # temp <- tempfile()
 # download.file("http://gis.ny.gov/gisdata/fileserver/?DSID=1300&file=Erie-Tax-Parcels-Centroid-Points-SHP.zip",temp)
 # unzip(temp, exdir="data/Erie")
-shapeobj1<-  st_read("data/Erie/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
+shapeobj1<-  st_read("data/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
 # unlink(temp)
 
 
 #download.file("https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&sorting=true","data/points.csv")
-pointcoords<- read.csv("data/points.csv")
+pointcoords<- read.csv("data/Environmental_Remediation_Sites.csv")
 
 
 ####convert data as necessary
@@ -188,19 +663,26 @@ leaflet() %>%
   addCircleMarkers(data = st_geometry(first), popup=first$Program.Facility.Name)
 ####try data tables package
 
+datatable(first,
+          filter = 'top', options = list(
+            pageLength = number, autoWidth = TRUE
+          ))
 
 
 
 ```
 
 
-leaflet map and table will eventually go here
-
 
 
 # Conclusions
 
+Although this tool is unfinished it is promising. The flexibility of this tool will allow it to go beyond the example given here. Another possible use in consideration is identifying locations in a greenhouse with least amount of wind, light, and temperature variability. A major drawback is that this code as it stands is computationally intensive and prohibitive for use on personal computers. A solution to this would be to optimize the algorithms and/or host on a server.
 
 # References
 
 Eberhardt, L. L., and J. M. Thomas. 1991. Designing Environmental Field Studies. Ecological Monographs 61:53–73.
+
+https://data.ny.gov/
+
+http://gis.ny.gov/
