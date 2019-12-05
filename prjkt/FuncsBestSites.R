@@ -70,6 +70,24 @@ score.calc<-function(rowprime,rowtest){
 }
 
 
+###runs the itterative ranking
+Run.score<-function(shapeobj_trim){
+foreach(r=1:nrow(shapeobj_trim))%dopar%{
+  x<-shapeobj_trim %>% 
+    select(-geometry,-Score)
+  x_ret<-shapeobj_trim
+  for(i in 1:nrow(x)){
+    
+    x_ret[i,"Score"]<-score.calc(x[r,],x[i,])
+    
+  }
+  
+  x_ret<-head(x_ret[order(x_ret$Score),],n=number)
+  x_ret
+}
+}
+
+
 ###Select best sets of sites
 Out_best<-function(possible_n){
   #Determine min possible value for sets
