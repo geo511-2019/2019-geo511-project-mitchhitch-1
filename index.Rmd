@@ -497,7 +497,7 @@ best
 # Results
 
 
-```{r actual_run, eval=FALSE, echo=FALSE, message=FALSE, warning=FALSE}
+```{r actual_run,  echo=FALSE, message=FALSE, warning=FALSE}
 
 library(sf)
 library(sp)
@@ -516,12 +516,12 @@ library(xtable)
 # temp <- tempfile()
 # download.file("http://gis.ny.gov/gisdata/fileserver/?DSID=1300&file=Erie-Tax-Parcels-Centroid-Points-SHP.zip",temp)
 # unzip(temp, exdir="data/Erie")
-shapeobj1<-  st_read("data/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
+shapeobj1<-  st_read("data/Erie/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
 # unlink(temp)
 
 
 #download.file("https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&sorting=true","data/points.csv")
-pointcoords<- read.csv("data/Environmental_Remediation_Sites.csv")
+pointcoords<- read.csv("data/points.csv")
 
 
 ####convert data as necessary
@@ -671,7 +671,7 @@ datatable(first,
 
 
 ```
-![screen of result](/data/Screenshot at 2019-12-05 14-18-39.png)
+
 
 
 
