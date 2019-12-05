@@ -47,7 +47,7 @@ ui <- fluidPage(
         tabPanel("Results",
                  #leaflet
                  #Table
-                 leafletOutput("bestmap"),
+                 leafletOutput("bestmap")
 
                  
                  )
@@ -173,84 +173,95 @@ server <- function(input, output,session) {
     ##########################3
     ###File1
     data1<- reactive({
-        filein <- input$file1
-        if (is.null(filein)) { 
-            return() 
-        } 
-        else if (file_ext(filein$datapath)=="csv"){
-            data = read.csv(file=filein$datapath)
-            return(data)
-        }
-        else{
-            # if (str_trunc(file_ext(filein),3,"right",ellipsis="")=="zip"){
-            #     shpDF<-unzip(filein)
-            # }
-            # else{
-                shpDF <- filein
-            # }
-            
-            prevWD <- getwd()
-            dir.create("unzipped")
-            tempdir <- "unzipped"
-            unzip(shpDF$datapath, exdir = tempdir)
-            setwd(tempdir)
-            setwd(list.dirs(recursive = FALSE))
-            files<-
-            # for (i in 1:list.files()){
-            #     file.rename(list.files()[i], shpDF$name[i])
-            # }
-            shpName <- list.files()[grep(list.files(),pattern="*.shp")[1]]
-            shpFile <- st_read(shpName)
-            return(shpFile)
-        } 
+        withProgress(message = 'Loading Files', value = 0, {
+            n<-4
+            incProgress(1/n, detail = paste("Uploading", 1))
+            filein <- input$file1
+            if (is.null(filein)) { 
+                return() 
+            } 
+            else if (file_ext(filein$datapath)=="csv"){
+                incProgress(1/n, detail = paste("Reading csv", 2))
+                data = read.csv(file=filein$datapath)
+                incProgress(1/n, detail = paste("csv Read", 3))
+                return(data)
+            }
+            else if (!is.null(filein)){
+                incProgress(1/n, detail = paste("Unzipping", 2))    
+                prevWD <- getwd()
+                unlink("unzipped", recursive = TRUE)
+                dir.create("unzipped")
+                tempdir <- "unzipped"
+                unzip(filein$datapath, exdir = tempdir)
+                setwd(tempdir)
+                if(length(list.dirs(recursive=FALSE))>0){
+                    setwd(list.dirs(recursive = FALSE))
+                }
+                else{
+                    print("in correct wd")
+                }
+                shpName <- list.files()[grep(list.files(),pattern="*.shp")[1]]
+                incProgress(1/n, detail = paste("Reading shape file", 3))
+                shpFile <- st_read(shpName)
+                return(shpFile)
+            } 
+            else {
+                return()
+            }
+            incProgress(1/n, detail = paste("Read", 4))
+        })
         
     })
     
     
     ###File2
     data2 <- reactive({
+        withProgress(message = 'Loading Files', value = 0, {
+        n<-4
+            incProgress(1/n, detail = paste("Uploading", 1))
         filein <- input$file2
         if (is.null(filein)) { 
             return() 
         } 
         else if (file_ext(filein$datapath)=="csv"){
+            incProgress(1/n, detail = paste("Reading csv", 2))
             data = read.csv(file=filein$datapath)
+            incProgress(1/n, detail = paste("csv Read", 3))
             return(data)
         }
         else if (!is.null(filein)){
-            # if (str_trunc(file_ext(filein),3,"right",ellipsis="")=="zip"){
-            #     shpDF<-unzip(filein)
-            # }
-            # else{
-                shpDF <- filein
-            # }
-                
+            incProgress(1/n, detail = paste("Unzipping", 2))    
             prevWD <- getwd()
+            unlink("unzipped", recursive = TRUE)
             dir.create("unzipped")
             tempdir <- "unzipped"
-            unzip(shpDF$datapath, exdir = tempdir)
+            unzip(filein$datapath, exdir = tempdir)
             setwd(tempdir)
-            setwd(list.dirs(recursive = FALSE))
-            files<-
-                # for (i in 1:list.files()){
-                #     file.rename(list.files()[i], shpDF$name[i])
-                # }
+            if(length(list.dirs(recursive=FALSE))>0){
+                setwd(list.dirs(recursive = FALSE))
+            }
+            else{
+                print("in correct wd")
+            }
             shpName <- list.files()[grep(list.files(),pattern="*.shp")[1]]
+            incProgress(1/n, detail = paste("Reading shape file", 3))
             shpFile <- st_read(shpName)
             return(shpFile)
         } 
         else {
             return()
-        }
+            }
+        incProgress(1/n, detail = paste("Read", 4))
+        })
 
     })
  
     ##This is just a demo table for File1
-    output$table_display <- renderTable({
-        f <- data1()
-        f <- select(f, c(input$columns1)) #subsetting takes place here
-        head(f)
-    })
+    # output$table_display <- renderTable({
+    #     f <- data1()
+    #     f <- select(f, c(input$columns1)) #subsetting takes place here
+    #     head(f)
+    # })
     
 
     ###This allows for selecting desired columns
@@ -267,7 +278,7 @@ server <- function(input, output,session) {
     
     RealRun<-eventReactive(input$RUN,{ 
         withProgress(message = 'Running Comparison', value = 0, {
-        # Number of times we'll go through the loop
+        # Number of steps
         n <- 10
         
         req(input$columns1)
@@ -281,22 +292,22 @@ server <- function(input, output,session) {
         
         data1_trim<-select(data1(), input$columns1)
         incProgress(1/n, detail = paste("Doing part", 4))
-        
+        rm(data1())
         data2_trim<-select(data2(), input$columns2)
         incProgress(1/n, detail = paste("Doing part", 5))
-        
+        rm(data2())
         data2_tran<-TransCoord_csv(data1_trim,data2_trim)
         incProgress(1/n, detail = paste("Doing part", 6))
-        
+        rm(data2_trim)
         data_ALL<-All_F(data1_trim,data2_tran)
         incProgress(1/n, detail = paste("Doing part", 7))
-        
+        rm(data1_trim,data2_tran)
         Ranked_list<-Run.score(data_ALL,number)
         incProgress(1/n, detail = paste("Doing part", 8))
-        
+        rm(data_ALL)
         best<-Out_best(Ranked_list)
         incProgress(1/n, detail = paste("Doing part", 9))
-        
+        rm(Ranked_list)
         first<-st_transform(best[[1]],'+proj=longlat +datum=WGS84')
         incProgress(1/n, detail = paste("Doing part", 10))
         
