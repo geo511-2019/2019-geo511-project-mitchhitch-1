@@ -19,13 +19,13 @@ Replicated experiments are well known to have the highest power for statistical 
 # Materials and methods
 
 
-Datasets
+Datasets:
 
 [Erie County tax parcels](http://gis.ny.gov/gisdata/fileserver/?DSID=1300&file=Erie-Tax-Parcels-Centroid-Points-SHP.zip)
 
 [NYS Brownfields](https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&sorting=true","data/points.csv)
 
-Additoinal data could come from USDA, USGS, NOAA, and NASA depending on variables of interest.
+These datasets were chosen to deomnstrate this tool becuase they are readily available and are focus locally. The tax parcels data allows us to determine property ownsership, acreage, value, contact information, and other attributes. A better option that this point file is a shape file of the parcels which is available upon request from the county. A shape file would allow more accurate attribution of other variables such as soil and climate. The brownfields data is chosen for demonstrations of how this tool could be used to identify potential brownfields with similar enough variables to allow use as replicates in related studies. Additoinal data could come from USDA, USGS, NOAA, and NASA depending on variables of interest.
 
 
 Shiny code (in progress version at https://mitchhitch.shinyapps.io/prjkt/)
@@ -372,7 +372,7 @@ shinyApp(ui = ui, server = server)
 
 Core Functions:
 
-Transform crs and set bounding box to same area
+Transform crs and set bounding box to same area.
 ```{r transform, eval=FALSE}
 
 TransCoord_csv<-function(File1,FileX,FileX_Lon="Longitude",FileX_Lat="Latitude",FileX_crs=4326){
@@ -387,7 +387,7 @@ TransCoord_csv<-function(File1,FileX,FileX_Lon="Longitude",FileX_Lat="Latitude",
 
 ```
 
-Join all uploaded files together
+Join all uploaded files together.
 ```{r join, eval=FALSE}
 
 All_F<-function(File1,...){
@@ -403,7 +403,9 @@ All_F<-function(File1,...){
 }
 ```
 
-Rank all the rows based on each field
+Rank all the rows based on each field. This function compares each row with every other row and 
+gives a score on how similar they are. Currently factors are weihted as 1 the same or 0 different.
+
 ```{r rank, eval=FALSE}
 
 score.calc<-function(rowprime,rowtest){
@@ -448,7 +450,8 @@ score.calc<-function(rowprime,rowtest){
 
 ```
 
-Itterate over every possible combination and combine into a list of each sites best matches
+Itterate over every possible combination and combine into a list of each sites best matches. This is defined
+as the sites where their scores are the lowest when added together.
 ```{r itterate, eval=FALSE}
 
 Run.score<-function(shapeobj_trim){
@@ -468,7 +471,7 @@ foreach(r=1:nrow(shapeobj_trim))%dopar%{
 }
 ```
 
-Select the best site combination (ties acceptable)
+Select the best site combination (ties acceptable).
 ```{r best, eval=FALSE}
 
 Out_best<-function(possible_n){
@@ -678,7 +681,7 @@ datatable(first,
 
 # Conclusions
 
-Although this tool is unfinished it is promising. The flexibility of this tool will allow it to go beyond the example given here. Another possible use in consideration is identifying locations in a greenhouse with least amount of wind, light, and temperature variability. A major drawback is that this code as it stands is computationally intensive and prohibitive for use on personal computers. A solution to this would be to optimize the algorithms and/or host on a server.
+Although this tool is in very early stages it is promising. The flexibility of this tool will allow it to go beyond the example given here. Another possible use in consideration is identifying locations in a greenhouse with least amount of wind, light, and temperature variability. A major drawback is that this code as it stands is computationally intensive and prohibitive for use on personal computers. A solution to this would be to optimize the algorithms and/or host on a server.
 
 # References
 
