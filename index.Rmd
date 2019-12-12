@@ -500,7 +500,7 @@ best
 # Results
 
 
-```{r actual_run,  echo=FALSE, message=FALSE, warning=FALSE}
+```{r actual_run,  echo=FALSE, message=FALSE, warning=FALSE, results='hide',fig.keep='all'}
 
 library(sf)
 library(sp)
@@ -512,42 +512,74 @@ library(leaflet)
 library(knitr)
 library(DT)
 library(xtable)
-
+library(lwgeom)
+library(FedData)
+library(raster)
+library(plyr)
 
 ####user input data (demo below) would like to add in soils and climate data but for now KISS
 ##if zip unzip else
 # temp <- tempfile()
 # download.file("http://gis.ny.gov/gisdata/fileserver/?DSID=1300&file=Erie-Tax-Parcels-Centroid-Points-SHP.zip",temp)
 # unzip(temp, exdir="data/Erie")
-shapeobj1<-  st_read("data/Erie/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
+#shapeobj1<-  st_read("data/Erie/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
 # unlink(temp)
-
+shapeobj1<- sf::st_read("data/eriecounty_parcels_2019_1119/eriecounty_parcels_1119.shp")
 
 #download.file("https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&sorting=true","data/points.csv")
 pointcoords<- read.csv("data/points.csv")
 
 
-####convert data as necessary
+shp<-st_make_valid(shapeobj1)
 
-  ############This is a workign first step
 point_trn<-st_as_sf(pointcoords,coords=c("Longitude","Latitude")) %>% 
   st_set_crs(4326) %>%
-  st_transform(st_crs(shapeobj1)) %>% 
-  st_crop(st_bbox(shapeobj1))  
+  st_transform(st_crs(shp)) %>% 
+  st_crop(st_bbox(shp)) 
 
 
-
-
-
-
-####join data to intersecting objects
+gc(full=TRUE, verbose=FALSE)
+####join data to intersecting objects must have shp first or geometry will be lost because
+#multipolygon does not behave like polygon in st_contains where prepared=TRUE
   ###This would be followed by additional data sets in a for loop
       ####aggregate unions identical points collapsing certain factors into vectors of factor level
 
-shapeobj2<-st_join(point_trn,shapeobj1,join=st_nn,k=1,maxdist=500) %>% 
-  aggregate( by=list(.$Program.Facility.Name),FUN=unique,do_union=TRUE,join = st_intersects)
-  
+shapeobj2<-st_join(shp,point_trn,join=st_contains) %>%
+  filter(!(is.na(.$Program.Facility.Name))) %>% 
+  aggregate( by=list(.$Program.Facility.Name),FUN=unique,do_union=TRUE) %>% 
+  aggregate(by=.$geometry,FUN=unique,do_union=TRUE)
 
+
+rm(shapeobj1, shp, point_trn, pointcoords)
+gc(full=TRUE, verbose=FALSE)
+
+# #get percp data
+# GHCN.prcp <- get_ghcn_daily(template = shapeobj_trim, 
+#                             label = "prcp", 
+#                             elements = c('prcp'))
+# 
+# 
+# #average location percip data (could also group to monthly averages etc)
+# ghcn_dat<-GHCN.prcp$tabular %>%
+#     lapply("[[", "PRCP") %>% 
+#     do.call("rbind",.) %>% 
+#     gather(day, precip, -STATION, -YEAR, -MONTH) %>%
+#     filter(!is.na(precip)) %>% 
+#     dplyr::select(-YEAR, -MONTH,-day) %>% 
+#     aggregate(by=list(.$STATION),FUN=mean) %>% 
+#     dplyr::select(-STATION)
+# 
+# #reassign points to monthly averages
+# ghcn_pts<-st_as_sf(GHCN.prcp$spatial,
+#                    coords=c(GHCN.prcp$spatial@coords[,2],GHCN.prcp$spatial@coords[,1])
+#                   ) %>% 
+#   st_transform(crs(shapeobj_trim)) %>% 
+#   left_join(ghcn_dat,by=c("ID"="Group.1"),)
+# 
+# write_sf(ghcn_pts,"ghcn_pts_file.shp")
+
+##to avoid timely download
+ghcn_pts<-sf::st_read("ghcn_pts_file.shp")
 
 
 ####User selects columns of interest and fixed value columns (done in shiny app)
@@ -555,15 +587,18 @@ shapeobj2<-st_join(point_trn,shapeobj1,join=st_nn,k=1,maxdist=500) %>%
     ##if fixed then set the fixed value from a list of possible values or factors
       ##this information is then used to filter (should probably have a submit button to avoid continuous run)
 ######DEMO all this here#####
+##also adds in precip data based on closest station
 
-shapeobj_trim<-select(shapeobj2,Program.Facility.Name,ACRES,Contaminants,Program.Type,DEC.Region,Control.Code,OU,Site.Class) %>% 
-  filter(ACRES>0) %>% 
+
+###error here try st_union on above set next
+shapeobj_trim<-st_join(shapeobj2,ghcn_pts,join=st_nn,k=1) %>% 
+  dplyr::select(Program.Facility.Name,precip,ASSESSACRE,Contaminants,Program.Type,DEC.Region,Control.Code,Site.Class) %>% 
+  filter(ASSESSACRE>0) %>% 
   mutate(Score=0)
+  
 
-
-
-rm(shapeobj1,shapeobj2,pointcoords,point_trn)
-
+rm(shapeobj2, ghcn_dat,ghcn_pts,GHCN.prcp)
+gc(full=TRUE, verbose=FALSE)
 ####user chooses number of sites desired "n"
 number=5
 
@@ -623,7 +658,7 @@ registerDoParallel(cores = 6)
 ####Note that there should be no zero scores because every site has unique names this is ok because it is uniform
 possible_n<- foreach(r=1:nrow(shapeobj_trim))%dopar%{
   x<-shapeobj_trim %>% 
-    select(-geometry,-Score)
+    dplyr::select(-geometry,-Score)
   x_ret<-shapeobj_trim
   for(i in 1:nrow(x)){
   
@@ -632,7 +667,8 @@ possible_n<- foreach(r=1:nrow(shapeobj_trim))%dopar%{
   }
   
   x_ret<-head(x_ret[order(x_ret$Score),],n=number)
-  x_ret
+  gc(verbose=FALSE)
+  return(x_ret)
 }
 
 
@@ -644,6 +680,7 @@ minimum<-foreach(i=1:length(possible_n),.combine=c)%dopar%{
   } %>% 
   min()
 
+gc()
 
 ####generate a list of best combinations
 best<-foreach(i=1:length(possible_n))%dopar%{
@@ -653,7 +690,7 @@ best<-foreach(i=1:length(possible_n))%dopar%{
 } %>% 
   compact()
 
-
+gc(full=TRUE, verbose=FALSE)
   ###the resulting combinations
 ####generated site list displayed in leaflet map and table 
   ### downloadable option could be nice too.
@@ -662,8 +699,8 @@ print("best possible combination of n sites")
 best[[1]]
 first<-st_transform(best[[1]],'+proj=longlat +datum=WGS84')
 leaflet() %>% 
-  addTiles() %>% 
-  addCircleMarkers(data = st_geometry(first), popup=first$Program.Facility.Name)
+  addTiles() %>%
+  addPolygons(data = first, popup=first$Program.Facility.Name)
 ####try data tables package
 
 datatable(first,

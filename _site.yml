@@ -1,7 +1,7 @@
 output_dir: 'docs'
 output:
   html_document:
-    theme: slate # choose your theme here: https://bootswatch.com/
+    theme: simplex  # choose your theme here: https://bootswatch.com/
     highlight: textmate
     mathjax: null
     toc: true
@@ -13,5 +13,4 @@ output:
     includes:
       after_body: include/after_body.html
     css: styles.css
-    keep_md: false
-   
+keep_md: false
