@@ -16,7 +16,7 @@
 
 <script src="site_libs/jquery-1.12.4/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link href="site_libs/bootstrap-3.3.5/css/simplex.min.css" rel="stylesheet" />
+<link href="site_libs/bootstrap-3.3.5/css/darkly.min.css" rel="stylesheet" />
 <script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
 <script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
@@ -127,33 +127,33 @@ summary {
 <style type="text/css">
 /* padding for bootstrap navbar */
 body {
-  padding-top: 41px;
+  padding-top: 60px;
   padding-bottom: 40px;
 }
 /* offset scroll position for anchor links (for fixed navbar)  */
 .section h1 {
-  padding-top: 46px;
-  margin-top: -46px;
+  padding-top: 65px;
+  margin-top: -65px;
 }
 .section h2 {
-  padding-top: 46px;
-  margin-top: -46px;
+  padding-top: 65px;
+  margin-top: -65px;
 }
 .section h3 {
-  padding-top: 46px;
-  margin-top: -46px;
+  padding-top: 65px;
+  margin-top: -65px;
 }
 .section h4 {
-  padding-top: 46px;
-  margin-top: -46px;
+  padding-top: 65px;
+  margin-top: -65px;
 }
 .section h5 {
-  padding-top: 46px;
-  margin-top: -46px;
+  padding-top: 65px;
+  margin-top: -65px;
 }
 .section h6 {
-  padding-top: 46px;
-  margin-top: -46px;
+  padding-top: 65px;
+  margin-top: -65px;
 }
 .dropdown-submenu {
   position: relative;
@@ -408,10 +408,10 @@ div.tocify {
 </div>
 <div id="materials-and-methods" class="section level1">
 <h1>Materials and methods</h1>
-<p>Datasets</p>
+<p>Datasets:</p>
 <p><a href="http://gis.ny.gov/gisdata/fileserver/?DSID=1300&amp;file=Erie-Tax-Parcels-Centroid-Points-SHP.zip">Erie County tax parcels</a></p>
 <p><a href="https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&amp;sorting=true%22,%22data/points.csv">NYS Brownfields</a></p>
-<p>Additoinal data could come from USDA, USGS, NOAA, and NASA depending on variables of interest.</p>
+<p>These datasets were chosen to deomnstrate this tool becuase they are readily available and are focus locally. The tax parcels data allows us to determine property ownsership, acreage, value, contact information, and other attributes. A better option that this point file is a shape file of the parcels which is available upon request from the county. A shape file would allow more accurate attribution of other variables such as soil and climate. The brownfields data is chosen for demonstrations of how this tool could be used to identify potential brownfields with similar enough variables to allow use as replicates in related studies. Additoinal data could come from USDA, USGS, NOAA, and NASA depending on variables of interest.</p>
 <p>Shiny code (in progress version at <a href="https://mitchhitch.shinyapps.io/prjkt/" class="uri">https://mitchhitch.shinyapps.io/prjkt/</a>)</p>
 <pre class="r"><code>##render is reactive
 
@@ -747,7 +747,7 @@ server &lt;- function(input, output,session) {
 
 shinyApp(ui = ui, server = server)</code></pre>
 <p>Core Functions:</p>
-<p>Transform crs and set bounding box to same area</p>
+<p>Transform crs and set bounding box to same area.</p>
 <pre class="r"><code>TransCoord_csv&lt;-function(File1,FileX,FileX_Lon=&quot;Longitude&quot;,FileX_Lat=&quot;Latitude&quot;,FileX_crs=4326){
   
   FileX&lt;-st_as_sf(FileX,coords=c(FileX_Lon,FileX_Lat)) %&gt;% 
@@ -757,7 +757,7 @@ shinyApp(ui = ui, server = server)</code></pre>
   FileX
   
 }</code></pre>
-<p>Join all uploaded files together</p>
+<p>Join all uploaded files together.</p>
 <pre class="r"><code>All_F&lt;-function(File1,...){
   OtherF&lt;-list(...)
   countF&lt;-length(OtherF)
@@ -769,7 +769,7 @@ shinyApp(ui = ui, server = server)</code></pre>
   }
 
 }</code></pre>
-<p>Rank all the rows based on each field</p>
+<p>Rank all the rows based on each field. This function compares each row with every other row and gives a score on how similar they are. Currently factors are weihted as 1 the same or 0 different.</p>
 <pre class="r"><code>score.calc&lt;-function(rowprime,rowtest){
   
   colscore&lt;-vector(length=length(rowprime))
@@ -809,7 +809,7 @@ shinyApp(ui = ui, server = server)</code></pre>
   
   return(sum(colscore))
 }</code></pre>
-<p>Itterate over every possible combination and combine into a list of each sites best matches</p>
+<p>Itterate over every possible combination and combine into a list of each sites best matches. This is defined as the sites where their scores are the lowest when added together.</p>
 <pre class="r"><code>Run.score&lt;-function(shapeobj_trim){
 foreach(r=1:nrow(shapeobj_trim))%dopar%{
   x&lt;-shapeobj_trim %&gt;% 
@@ -825,7 +825,7 @@ foreach(r=1:nrow(shapeobj_trim))%dopar%{
   x_ret
 }
 }</code></pre>
-<p>Select the best site combination (ties acceptable)</p>
+<p>Select the best site combination (ties acceptable).</p>
 <pre class="r"><code>Out_best&lt;-function(possible_n){
   #Determine min possible value for sets
 minimum&lt;-foreach(i=1:length(possible_n),.combine=c)%dopar%{
@@ -846,40 +846,316 @@ best
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
-<pre><code>## Reading layer `Erie_2018_Tax_Parcel_Centroid_Points_SHP&#39; from data source `/home/tiwaz/Desktop/UBfall2019/spatdatanaly/GEO511finlprjkt/data/Erie/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp&#39; using driver `ESRI Shapefile&#39;
-## Simple feature collection with 363784 features and 70 fields
+<pre><code>## Reading layer `eriecounty_parcels_1119&#39; from data source `/home/tiwaz/Desktop/UBfall2019/spatdatanaly/GEO511finlprjkt/data/eriecounty_parcels_2019_1119/eriecounty_parcels_1119.shp&#39; using driver `ESRI Shapefile&#39;
+## Simple feature collection with 359088 features and 51 fields
+## geometry type:  MULTIPOLYGON
+## dimension:      XY
+## bbox:           xmin: 999274.6 ymin: 888383.1 xmax: 1181035 ymax: 1129004
+## epsg (SRID):    NA
+## proj4string:    +proj=tmerc +lat_0=40 +lon_0=-78.5833333333333 +k=0.9999375 +x_0=350000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs</code></pre>
+<pre><code>##            used  (Mb) gc trigger  (Mb) max used  (Mb)
+## Ncells  9200148 491.4   16907317 903.0 16907317 903.0
+## Vcells 52993005 404.4   87782433 669.8 73085361 557.6</code></pre>
+<pre><code>##            used  (Mb) gc trigger   (Mb)  max used   (Mb)
+## Ncells  4157492 222.1   13525854  722.4  16907317  903.0
+## Vcells 17895129 136.6  224316525 1711.4 350491006 2674.1</code></pre>
+<pre><code>## Reading layer `ghcn_pts_file&#39; from data source `/home/tiwaz/Desktop/UBfall2019/spatdatanaly/GEO511finlprjkt/ghcn_pts_file.shp&#39; using driver `ESRI Shapefile&#39;
+## Simple feature collection with 69 features and 3 fields
 ## geometry type:  POINT
 ## dimension:      XY
-## bbox:           xmin: 161025.5 ymin: 4706563 xmax: 217831 ymax: 4777652
-## epsg (SRID):    26918
-## proj4string:    +proj=utm +zone=18 +datum=NAD83 +units=m +no_defs</code></pre>
+## bbox:           xmin: 1056793 ymin: 989272 xmax: 1155994 ymax: 1100988
+## epsg (SRID):    NA
+## proj4string:    +proj=tmerc +lat_0=40 +lon_0=-78.5833333333333 +k=0.9999375 +x_0=350000.000000001 +y_0=0 +datum=NAD83 +units=us-ft +no_defs</code></pre>
+<pre><code>## 
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |                                                                      |   1%
+  |                                                                            
+  |=                                                                     |   1%
+  |                                                                            
+  |==                                                                    |   2%
+  |                                                                            
+  |==                                                                    |   3%
+  |                                                                            
+  |==                                                                    |   4%
+  |                                                                            
+  |===                                                                   |   4%
+  |                                                                            
+  |====                                                                  |   5%
+  |                                                                            
+  |====                                                                  |   6%
+  |                                                                            
+  |=====                                                                 |   7%
+  |                                                                            
+  |======                                                                |   8%
+  |                                                                            
+  |======                                                                |   9%
+  |                                                                            
+  |=======                                                               |  10%
+  |                                                                            
+  |========                                                              |  11%
+  |                                                                            
+  |========                                                              |  12%
+  |                                                                            
+  |=========                                                             |  13%
+  |                                                                            
+  |==========                                                            |  14%
+  |                                                                            
+  |==========                                                            |  15%
+  |                                                                            
+  |===========                                                           |  16%
+  |                                                                            
+  |============                                                          |  16%
+  |                                                                            
+  |============                                                          |  17%
+  |                                                                            
+  |============                                                          |  18%
+  |                                                                            
+  |=============                                                         |  19%
+  |                                                                            
+  |==============                                                        |  19%
+  |                                                                            
+  |==============                                                        |  20%
+  |                                                                            
+  |==============                                                        |  21%
+  |                                                                            
+  |===============                                                       |  21%
+  |                                                                            
+  |================                                                      |  22%
+  |                                                                            
+  |================                                                      |  23%
+  |                                                                            
+  |================                                                      |  24%
+  |                                                                            
+  |=================                                                     |  24%
+  |                                                                            
+  |==================                                                    |  25%
+  |                                                                            
+  |==================                                                    |  26%
+  |                                                                            
+  |===================                                                   |  27%
+  |                                                                            
+  |====================                                                  |  28%
+  |                                                                            
+  |====================                                                  |  29%
+  |                                                                            
+  |=====================                                                 |  30%
+  |                                                                            
+  |======================                                                |  31%
+  |                                                                            
+  |======================                                                |  32%
+  |                                                                            
+  |=======================                                               |  33%
+  |                                                                            
+  |========================                                              |  34%
+  |                                                                            
+  |========================                                              |  35%
+  |                                                                            
+  |=========================                                             |  36%
+  |                                                                            
+  |==========================                                            |  36%
+  |                                                                            
+  |==========================                                            |  37%
+  |                                                                            
+  |==========================                                            |  38%
+  |                                                                            
+  |===========================                                           |  39%
+  |                                                                            
+  |============================                                          |  39%
+  |                                                                            
+  |============================                                          |  40%
+  |                                                                            
+  |============================                                          |  41%
+  |                                                                            
+  |=============================                                         |  41%
+  |                                                                            
+  |==============================                                        |  42%
+  |                                                                            
+  |==============================                                        |  43%
+  |                                                                            
+  |==============================                                        |  44%
+  |                                                                            
+  |===============================                                       |  44%
+  |                                                                            
+  |================================                                      |  45%
+  |                                                                            
+  |================================                                      |  46%
+  |                                                                            
+  |=================================                                     |  47%
+  |                                                                            
+  |==================================                                    |  48%
+  |                                                                            
+  |==================================                                    |  49%
+  |                                                                            
+  |===================================                                   |  50%
+  |                                                                            
+  |====================================                                  |  51%
+  |                                                                            
+  |====================================                                  |  52%
+  |                                                                            
+  |=====================================                                 |  53%
+  |                                                                            
+  |======================================                                |  54%
+  |                                                                            
+  |======================================                                |  55%
+  |                                                                            
+  |=======================================                               |  56%
+  |                                                                            
+  |========================================                              |  56%
+  |                                                                            
+  |========================================                              |  57%
+  |                                                                            
+  |========================================                              |  58%
+  |                                                                            
+  |=========================================                             |  59%
+  |                                                                            
+  |==========================================                            |  59%
+  |                                                                            
+  |==========================================                            |  60%
+  |                                                                            
+  |==========================================                            |  61%
+  |                                                                            
+  |===========================================                           |  61%
+  |                                                                            
+  |============================================                          |  62%
+  |                                                                            
+  |============================================                          |  63%
+  |                                                                            
+  |============================================                          |  64%
+  |                                                                            
+  |=============================================                         |  64%
+  |                                                                            
+  |==============================================                        |  65%
+  |                                                                            
+  |==============================================                        |  66%
+  |                                                                            
+  |===============================================                       |  67%
+  |                                                                            
+  |================================================                      |  68%
+  |                                                                            
+  |================================================                      |  69%
+  |                                                                            
+  |=================================================                     |  70%
+  |                                                                            
+  |==================================================                    |  71%
+  |                                                                            
+  |==================================================                    |  72%
+  |                                                                            
+  |===================================================                   |  73%
+  |                                                                            
+  |====================================================                  |  74%
+  |                                                                            
+  |====================================================                  |  75%
+  |                                                                            
+  |=====================================================                 |  76%
+  |                                                                            
+  |======================================================                |  76%
+  |                                                                            
+  |======================================================                |  77%
+  |                                                                            
+  |======================================================                |  78%
+  |                                                                            
+  |=======================================================               |  79%
+  |                                                                            
+  |========================================================              |  79%
+  |                                                                            
+  |========================================================              |  80%
+  |                                                                            
+  |========================================================              |  81%
+  |                                                                            
+  |=========================================================             |  81%
+  |                                                                            
+  |==========================================================            |  82%
+  |                                                                            
+  |==========================================================            |  83%
+  |                                                                            
+  |==========================================================            |  84%
+  |                                                                            
+  |===========================================================           |  84%
+  |                                                                            
+  |============================================================          |  85%
+  |                                                                            
+  |============================================================          |  86%
+  |                                                                            
+  |=============================================================         |  87%
+  |                                                                            
+  |==============================================================        |  88%
+  |                                                                            
+  |==============================================================        |  89%
+  |                                                                            
+  |===============================================================       |  90%
+  |                                                                            
+  |================================================================      |  91%
+  |                                                                            
+  |================================================================      |  92%
+  |                                                                            
+  |=================================================================     |  93%
+  |                                                                            
+  |==================================================================    |  94%
+  |                                                                            
+  |==================================================================    |  95%
+  |                                                                            
+  |===================================================================   |  96%
+  |                                                                            
+  |====================================================================  |  96%
+  |                                                                            
+  |====================================================================  |  97%
+  |                                                                            
+  |====================================================================  |  98%
+  |                                                                            
+  |===================================================================== |  99%
+  |                                                                            
+  |======================================================================|  99%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+<pre><code>##           used  (Mb) gc trigger   (Mb)  max used   (Mb)
+## Ncells 1904193 101.7   10820684  577.9  16907317  903.0
+## Vcells 4916770  37.6  179453220 1369.2 350491006 2674.1</code></pre>
+<pre><code>##           used  (Mb) gc trigger   (Mb)  max used   (Mb)
+## Ncells 1920075 102.6    8656548  462.4  16907317  903.0
+## Vcells 5185823  39.6  143562576 1095.3 350491006 2674.1</code></pre>
+<pre><code>##           used  (Mb) gc trigger  (Mb)  max used   (Mb)
+## Ncells 1920318 102.6    6925239 369.9  16907317  903.0
+## Vcells 5189552  39.6  114850061 876.3 350491006 2674.1</code></pre>
 <pre><code>## [1] &quot;best possible combination of n sites&quot;</code></pre>
 <pre><code>## Simple feature collection with 5 features and 9 fields
-## Attribute-geometry relationship: 0 constant, 8 aggregate, 0 identity, 1 NA&#39;s
-## geometry type:  POINT
+## geometry type:  POLYGON
 ## dimension:      XY
-## bbox:           xmin: 179001 ymin: 4732059 xmax: 188990 ymax: 4767371
-## epsg (SRID):    26918
-## proj4string:    +proj=utm +zone=18 +datum=NAD83 +units=m +no_defs
-##                       Program.Facility.Name ACRES Contaminants Program.Type
-## 8                   3M O-Cel-O Sponge Plant  2.93            1            3
-## 68       Tennessee Gas Pipeline Station 229 49.70            1            3
-## 18                                Chem-Trol 19.09            1            3
-## 36 Iroquois Gas/Westwood Pharm. Terrestrial  4.54  1, 243, 129            3
-## 44             Niagara Mohawk - Cherry Farm 56.42          209            3
-##    DEC.Region Control.Code OU Site.Class                 geometry Score
-## 8           9         5, 1  2         04   POINT (180569 4765617)     0
-## 68          9         1, 5  2         04   POINT (186153 4732059)    40
-## 18          9            1  2         04   POINT (188990 4745442)    41
-## 36          9         5, 1  2         04 POINT (182352.6 4760503)    42
-## 44          9         1, 5  2         04   POINT (179001 4767371)    42</code></pre>
-<p><div id="htmlwidget-67247a6b0960205c65ba" style="width:672px;height:480px;" class="leaflet html-widget"></div>
-<script type="application/json" data-for="htmlwidget-67247a6b0960205c65ba">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"http://openstreetmap.org\">OpenStreetMap<\/a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA<\/a>"}]},{"method":"addCircleMarkers","args":[[42.97615737,42.67695649,42.79836345,42.930958333,42.99125582],[-78.91726355,-78.8302482,-78.80305177,-78.892538889,-78.93745514],10,null,null,{"interactive":true,"className":"","stroke":true,"color":"#03F","weight":5,"opacity":0.5,"fill":true,"fillColor":"#03F","fillOpacity":0.2},null,null,["3M O-Cel-O Sponge Plant","Tennessee Gas Pipeline Station 229","Chem-Trol","Iroquois Gas/Westwood Pharm. Terrestrial","Niagara Mohawk - Cherry Farm"],null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null]}],"limits":{"lat":[42.67695649,42.99125582],"lng":[-78.93745514,-78.80305177]}},"evals":[],"jsHooks":[]}</script><div id="htmlwidget-d0d468ce446425700a19" style="width:100%;height:auto;" class="datatables html-widget"></div>
-<script type="application/json" data-for="htmlwidget-d0d468ce446425700a19">{"x":{"filter":"top","filterHTML":"<tr>\n  <td><\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;3M O-Cel-O Sponge Plant&quot;,&quot;Chem-Trol&quot;,&quot;Iroquois Gas/Westwood Pharm. Terrestrial&quot;,&quot;Niagara Mohawk - Cherry Farm&quot;,&quot;Tennessee Gas Pipeline Station 229&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"number\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"display: none; position: absolute; width: 200px;\">\n      <div data-min=\"2.93\" data-max=\"56.42\" data-scale=\"2\"><\/div>\n      <span style=\"float: left;\"><\/span>\n      <span style=\"float: right;\"><\/span>\n    <\/div>\n  <\/td>\n  <td style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"disabled\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"disabled\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"number\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"display: none; position: absolute; width: 200px;\">\n      <div data-min=\"0\" data-max=\"42\"><\/div>\n      <span style=\"float: left;\"><\/span>\n      <span style=\"float: right;\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["8","68","18","36","44"],["3M O-Cel-O Sponge Plant","Tennessee Gas Pipeline Station 229","Chem-Trol","Iroquois Gas/Westwood Pharm. Terrestrial","Niagara Mohawk - Cherry Farm"],[2.93,49.7,19.09,4.54,56.42],["","","",["","volatile organics","heavy metals"],"polychlorinated biphenyls (PCB)"],["HW","HW","HW","HW","HW"],[9,9,9,9,9],[["O","A"],["A","O"],"A",["O","A"],["A","O"]],["01 ","01 ","01 ","01 ","01 "],["04","04","04","04","04"],[[-78.91726355,42.97615737],[-78.8302482,42.67695649],[-78.80305177,42.79836345],[-78.892538889,42.930958333],[-78.93745514,42.99125582]],[0,40,41,42,42]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>Program.Facility.Name<\/th>\n      <th>ACRES<\/th>\n      <th>Contaminants<\/th>\n      <th>Program.Type<\/th>\n      <th>DEC.Region<\/th>\n      <th>Control.Code<\/th>\n      <th>OU<\/th>\n      <th>Site.Class<\/th>\n      <th>geometry<\/th>\n      <th>Score<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":[2,5,10]},{"orderable":false,"targets":0}],"order":[],"orderClasses":false,"orderCellsTop":true,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script></p>
+## bbox:           xmin: 1074744 ymin: 1025869 xmax: 1077743 ymax: 1031516
+## epsg (SRID):    NA
+## proj4string:    +proj=tmerc +lat_0=40 +lon_0=-78.5833333333333 +k=0.9999375 +x_0=350000 +y_0=0 +datum=NAD83 +units=us-ft +no_defs
+##                         Program.Facility.Name   precip ASSESSACRE
+## 67 Site II-10 Tecumseh Phase II Business Park 29.96727     153.68
+## 69 Site II-12 Tecumseh Phase II Business Park 29.96727     153.68
+## 68 Site II-11 Tecumseh Phase II Business Park 29.96727     153.68
+## 70  Site II-8 Tecumseh Phase II Business Park 29.96727     153.68
+## 66    Site I-1 Tecumseh Phase I Business Park 29.96727     153.68
+##                                                         Contaminants
+## 67                             201, 50, 76, 143, 41, 150, 94, 49, 51
+## 69                            150, 49, 158, 50, 201, 143, 94, 51, 41
+## 68                        143, 49, 41, 50, 51, 201, 150, 209, 94, 76
+## 70                                 94, 201, 41, 51, 143, 150, 49, 50
+## 66 143, 150, 222, 86, 45, 50, 158, 51, 145, 154, 41, 49, 76, 94, 155
+##    Program.Type DEC.Region Control.Code Site.Class
+## 67            1          9            3         C 
+## 69            1          9            3         C 
+## 68            1          9            3         A 
+## 70            1          9            3         A 
+## 66            1          9            3         C 
+##                          geometry Score
+## 67 POLYGON ((1076140 1030770, ...     0
+## 69 POLYGON ((1076140 1030770, ...     4
+## 68 POLYGON ((1076140 1030770, ...     5
+## 70 POLYGON ((1076140 1030770, ...     5
+## 66 POLYGON ((1076140 1030770, ...    10</code></pre>
+<p><div id="htmlwidget-7b583544e78c46520a5c" style="width:672px;height:480px;" class="leaflet html-widget"></div>
+<script type="application/json" data-for="htmlwidget-7b583544e78c46520a5c">{"x":{"options":{"crs":{"crsClass":"L.CRS.EPSG3857","code":null,"proj4def":null,"projectedBounds":null,"options":{}}},"calls":[{"method":"addTiles","args":["//{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",null,null,{"minZoom":0,"maxZoom":18,"tileSize":256,"subdomains":"abc","errorTileUrl":"","tms":false,"noWrap":false,"zoomOffset":0,"zoomReverse":false,"opacity":1,"zIndex":1,"detectRetina":false,"attribution":"&copy; <a href=\"http://openstreetmap.org\">OpenStreetMap<\/a> contributors, <a href=\"http://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA<\/a>"}]},{"method":"addPolygons","args":[[[[{"lng":[-78.8523092917347,-78.8518888300822,-78.8518989410997,-78.8516392026389,-78.8514234625181,-78.8513587153233,-78.85135636326,-78.8512820243427,-78.8510478520106,-78.8497304168234,-78.8495794052232,-78.8495969872932,-78.8494359026582,-78.8494147128118,-78.8493701566502,-78.8493944660853,-78.8492071109312,-78.8491771987112,-78.84911065239,-78.8489869920457,-78.8489996748042,-78.8488794476397,-78.8484751120503,-78.848218673293,-78.846280219498,-78.8462773066943,-78.8465260096,-78.8466170719562,-78.8480303832581,-78.8486495871072,-78.8514698673597,-78.8530172015018,-78.8533455211361,-78.8535875184405,-78.8535877073552,-78.8534754293052,-78.8531822327849,-78.8531840477407,-78.8554772333786,-78.8554790041809,-78.8555916132542,-78.8555261574751,-78.8567751885,-78.8572725849262,-78.8575101643543,-78.8573636558382,-78.8556786186405,-78.8555019847073,-78.8558736019816,-78.8545147426585,-78.8545996005221,-78.8531895227655,-78.8530199762659,-78.8528863122544,-78.8524701965311,-78.8524096178436,-78.8523092917347],"lat":[42.8287272165238,42.8278098485027,42.827804508021,42.8272246070903,42.8268502253299,42.826721070322,42.826715930103,42.8265511267171,42.8260316699662,42.8231090711717,42.8227738067862,42.8227720509614,42.8224239481684,42.8224262263847,42.8223313220841,42.8223230338779,42.82190570718,42.8219112644462,42.8217680487963,42.8215076635212,42.8215042042109,42.8212294053201,42.8204632450257,42.8199863964793,42.8157448173966,42.8157384486318,42.8156747637056,42.8156514453749,42.8152895277935,42.816643748187,42.8159262187086,42.8193255355528,42.819244178396,42.819775776545,42.8197761929069,42.8198039824604,42.8198765510662,42.8198805321195,42.8249103035991,42.8249141883926,42.8251611550028,42.8254493812257,42.828184333919,42.8280569406983,42.8285721875765,42.8286085529453,42.8290265742092,42.8290703916388,42.8298894635646,42.8302418876673,42.8304121715375,42.8307720218943,42.8304214563497,42.8301454928462,42.829285694858,42.8291605196282,42.8287272165238]},{"lng":[-78.8522873987613,-78.8522528528933,-78.8518566763761,-78.8520450898998,-78.8524412672892,-78.8522873987613],"lat":[42.8182115636098,42.8181426526844,42.8182395103392,42.8186153423461,42.8185184831426,42.8182115636098]}]],[[{"lng":[-78.8523092917347,-78.8518888300822,-78.8518989410997,-78.8516392026389,-78.8514234625181,-78.8513587153233,-78.85135636326,-78.8512820243427,-78.8510478520106,-78.8497304168234,-78.8495794052232,-78.8495969872932,-78.8494359026582,-78.8494147128118,-78.8493701566502,-78.8493944660853,-78.8492071109312,-78.8491771987112,-78.84911065239,-78.8489869920457,-78.8489996748042,-78.8488794476397,-78.8484751120503,-78.848218673293,-78.846280219498,-78.8462773066943,-78.8465260096,-78.8466170719562,-78.8480303832581,-78.8486495871072,-78.8514698673597,-78.8530172015018,-78.8533455211361,-78.8535875184405,-78.8535877073552,-78.8534754293052,-78.8531822327849,-78.8531840477407,-78.8554772333786,-78.8554790041809,-78.8555916132542,-78.8555261574751,-78.8567751885,-78.8572725849262,-78.8575101643543,-78.8573636558382,-78.8556786186405,-78.8555019847073,-78.8558736019816,-78.8545147426585,-78.8545996005221,-78.8531895227655,-78.8530199762659,-78.8528863122544,-78.8524701965311,-78.8524096178436,-78.8523092917347],"lat":[42.8287272165238,42.8278098485027,42.827804508021,42.8272246070903,42.8268502253299,42.826721070322,42.826715930103,42.8265511267171,42.8260316699662,42.8231090711717,42.8227738067862,42.8227720509614,42.8224239481684,42.8224262263847,42.8223313220841,42.8223230338779,42.82190570718,42.8219112644462,42.8217680487963,42.8215076635212,42.8215042042109,42.8212294053201,42.8204632450257,42.8199863964793,42.8157448173966,42.8157384486318,42.8156747637056,42.8156514453749,42.8152895277935,42.816643748187,42.8159262187086,42.8193255355528,42.819244178396,42.819775776545,42.8197761929069,42.8198039824604,42.8198765510662,42.8198805321195,42.8249103035991,42.8249141883926,42.8251611550028,42.8254493812257,42.828184333919,42.8280569406983,42.8285721875765,42.8286085529453,42.8290265742092,42.8290703916388,42.8298894635646,42.8302418876673,42.8304121715375,42.8307720218943,42.8304214563497,42.8301454928462,42.829285694858,42.8291605196282,42.8287272165238]},{"lng":[-78.8522873987613,-78.8522528528933,-78.8518566763761,-78.8520450898998,-78.8524412672892,-78.8522873987613],"lat":[42.8182115636098,42.8181426526844,42.8182395103392,42.8186153423461,42.8185184831426,42.8182115636098]}]],[[{"lng":[-78.8523092917347,-78.8518888300822,-78.8518989410997,-78.8516392026389,-78.8514234625181,-78.8513587153233,-78.85135636326,-78.8512820243427,-78.8510478520106,-78.8497304168234,-78.8495794052232,-78.8495969872932,-78.8494359026582,-78.8494147128118,-78.8493701566502,-78.8493944660853,-78.8492071109312,-78.8491771987112,-78.84911065239,-78.8489869920457,-78.8489996748042,-78.8488794476397,-78.8484751120503,-78.848218673293,-78.846280219498,-78.8462773066943,-78.8465260096,-78.8466170719562,-78.8480303832581,-78.8486495871072,-78.8514698673597,-78.8530172015018,-78.8533455211361,-78.8535875184405,-78.8535877073552,-78.8534754293052,-78.8531822327849,-78.8531840477407,-78.8554772333786,-78.8554790041809,-78.8555916132542,-78.8555261574751,-78.8567751885,-78.8572725849262,-78.8575101643543,-78.8573636558382,-78.8556786186405,-78.8555019847073,-78.8558736019816,-78.8545147426585,-78.8545996005221,-78.8531895227655,-78.8530199762659,-78.8528863122544,-78.8524701965311,-78.8524096178436,-78.8523092917347],"lat":[42.8287272165238,42.8278098485027,42.827804508021,42.8272246070903,42.8268502253299,42.826721070322,42.826715930103,42.8265511267171,42.8260316699662,42.8231090711717,42.8227738067862,42.8227720509614,42.8224239481684,42.8224262263847,42.8223313220841,42.8223230338779,42.82190570718,42.8219112644462,42.8217680487963,42.8215076635212,42.8215042042109,42.8212294053201,42.8204632450257,42.8199863964793,42.8157448173966,42.8157384486318,42.8156747637056,42.8156514453749,42.8152895277935,42.816643748187,42.8159262187086,42.8193255355528,42.819244178396,42.819775776545,42.8197761929069,42.8198039824604,42.8198765510662,42.8198805321195,42.8249103035991,42.8249141883926,42.8251611550028,42.8254493812257,42.828184333919,42.8280569406983,42.8285721875765,42.8286085529453,42.8290265742092,42.8290703916388,42.8298894635646,42.8302418876673,42.8304121715375,42.8307720218943,42.8304214563497,42.8301454928462,42.829285694858,42.8291605196282,42.8287272165238]},{"lng":[-78.8522873987613,-78.8522528528933,-78.8518566763761,-78.8520450898998,-78.8524412672892,-78.8522873987613],"lat":[42.8182115636098,42.8181426526844,42.8182395103392,42.8186153423461,42.8185184831426,42.8182115636098]}]],[[{"lng":[-78.8523092917347,-78.8518888300822,-78.8518989410997,-78.8516392026389,-78.8514234625181,-78.8513587153233,-78.85135636326,-78.8512820243427,-78.8510478520106,-78.8497304168234,-78.8495794052232,-78.8495969872932,-78.8494359026582,-78.8494147128118,-78.8493701566502,-78.8493944660853,-78.8492071109312,-78.8491771987112,-78.84911065239,-78.8489869920457,-78.8489996748042,-78.8488794476397,-78.8484751120503,-78.848218673293,-78.846280219498,-78.8462773066943,-78.8465260096,-78.8466170719562,-78.8480303832581,-78.8486495871072,-78.8514698673597,-78.8530172015018,-78.8533455211361,-78.8535875184405,-78.8535877073552,-78.8534754293052,-78.8531822327849,-78.8531840477407,-78.8554772333786,-78.8554790041809,-78.8555916132542,-78.8555261574751,-78.8567751885,-78.8572725849262,-78.8575101643543,-78.8573636558382,-78.8556786186405,-78.8555019847073,-78.8558736019816,-78.8545147426585,-78.8545996005221,-78.8531895227655,-78.8530199762659,-78.8528863122544,-78.8524701965311,-78.8524096178436,-78.8523092917347],"lat":[42.8287272165238,42.8278098485027,42.827804508021,42.8272246070903,42.8268502253299,42.826721070322,42.826715930103,42.8265511267171,42.8260316699662,42.8231090711717,42.8227738067862,42.8227720509614,42.8224239481684,42.8224262263847,42.8223313220841,42.8223230338779,42.82190570718,42.8219112644462,42.8217680487963,42.8215076635212,42.8215042042109,42.8212294053201,42.8204632450257,42.8199863964793,42.8157448173966,42.8157384486318,42.8156747637056,42.8156514453749,42.8152895277935,42.816643748187,42.8159262187086,42.8193255355528,42.819244178396,42.819775776545,42.8197761929069,42.8198039824604,42.8198765510662,42.8198805321195,42.8249103035991,42.8249141883926,42.8251611550028,42.8254493812257,42.828184333919,42.8280569406983,42.8285721875765,42.8286085529453,42.8290265742092,42.8290703916388,42.8298894635646,42.8302418876673,42.8304121715375,42.8307720218943,42.8304214563497,42.8301454928462,42.829285694858,42.8291605196282,42.8287272165238]},{"lng":[-78.8522873987613,-78.8522528528933,-78.8518566763761,-78.8520450898998,-78.8524412672892,-78.8522873987613],"lat":[42.8182115636098,42.8181426526844,42.8182395103392,42.8186153423461,42.8185184831426,42.8182115636098]}]],[[{"lng":[-78.8523092917347,-78.8518888300822,-78.8518989410997,-78.8516392026389,-78.8514234625181,-78.8513587153233,-78.85135636326,-78.8512820243427,-78.8510478520106,-78.8497304168234,-78.8495794052232,-78.8495969872932,-78.8494359026582,-78.8494147128118,-78.8493701566502,-78.8493944660853,-78.8492071109312,-78.8491771987112,-78.84911065239,-78.8489869920457,-78.8489996748042,-78.8488794476397,-78.8484751120503,-78.848218673293,-78.846280219498,-78.8462773066943,-78.8465260096,-78.8466170719562,-78.8480303832581,-78.8486495871072,-78.8514698673597,-78.8530172015018,-78.8533455211361,-78.8535875184405,-78.8535877073552,-78.8534754293052,-78.8531822327849,-78.8531840477407,-78.8554772333786,-78.8554790041809,-78.8555916132542,-78.8555261574751,-78.8567751885,-78.8572725849262,-78.8575101643543,-78.8573636558382,-78.8556786186405,-78.8555019847073,-78.8558736019816,-78.8545147426585,-78.8545996005221,-78.8531895227655,-78.8530199762659,-78.8528863122544,-78.8524701965311,-78.8524096178436,-78.8523092917347],"lat":[42.8287272165238,42.8278098485027,42.827804508021,42.8272246070903,42.8268502253299,42.826721070322,42.826715930103,42.8265511267171,42.8260316699662,42.8231090711717,42.8227738067862,42.8227720509614,42.8224239481684,42.8224262263847,42.8223313220841,42.8223230338779,42.82190570718,42.8219112644462,42.8217680487963,42.8215076635212,42.8215042042109,42.8212294053201,42.8204632450257,42.8199863964793,42.8157448173966,42.8157384486318,42.8156747637056,42.8156514453749,42.8152895277935,42.816643748187,42.8159262187086,42.8193255355528,42.819244178396,42.819775776545,42.8197761929069,42.8198039824604,42.8198765510662,42.8198805321195,42.8249103035991,42.8249141883926,42.8251611550028,42.8254493812257,42.828184333919,42.8280569406983,42.8285721875765,42.8286085529453,42.8290265742092,42.8290703916388,42.8298894635646,42.8302418876673,42.8304121715375,42.8307720218943,42.8304214563497,42.8301454928462,42.829285694858,42.8291605196282,42.8287272165238]},{"lng":[-78.8522873987613,-78.8522528528933,-78.8518566763761,-78.8520450898998,-78.8524412672892,-78.8522873987613],"lat":[42.8182115636098,42.8181426526844,42.8182395103392,42.8186153423461,42.8185184831426,42.8182115636098]}]]],null,null,{"interactive":true,"className":"","stroke":true,"color":"#03F","weight":5,"opacity":0.5,"fill":true,"fillColor":"#03F","fillOpacity":0.2,"smoothFactor":1,"noClip":false},["Site II-10 Tecumseh Phase II Business Park","Site II-12 Tecumseh Phase II Business Park","Site II-11 Tecumseh Phase II Business Park","Site II-8 Tecumseh Phase II Business Park","Site I-1 Tecumseh Phase I Business Park"],null,null,{"interactive":false,"permanent":false,"direction":"auto","opacity":1,"offset":[0,0],"textsize":"10px","textOnly":false,"className":"","sticky":true},null]}],"limits":{"lat":[42.8152895277935,42.8307720218943],"lng":[-78.8575101643543,-78.8462773066943]}},"evals":[],"jsHooks":[]}</script><div id="htmlwidget-d0c67f95c82c316a379b" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-d0c67f95c82c316a379b">{"x":{"filter":"top","filterHTML":"<tr>\n  <td><\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;Site I-1 Tecumseh Phase I Business Park&quot;,&quot;Site II-10 Tecumseh Phase II Business Park&quot;,&quot;Site II-11 Tecumseh Phase II Business Park&quot;,&quot;Site II-12 Tecumseh Phase II Business Park&quot;,&quot;Site II-8 Tecumseh Phase II Business Park&quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td data-type=\"disabled\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"disabled\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"disabled\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"factor\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"width: 100%; display: none;\">\n      <select multiple=\"multiple\" style=\"width: 100%;\" data-options=\"[&quot;A &quot;,&quot;C &quot;]\"><\/select>\n    <\/div>\n  <\/td>\n  <td style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n  <\/td>\n  <td data-type=\"number\" style=\"vertical-align: top;\">\n    <div class=\"form-group has-feedback\" style=\"margin-bottom: auto;\">\n      <input type=\"search\" placeholder=\"All\" class=\"form-control\" style=\"width: 100%;\"/>\n      <span class=\"glyphicon glyphicon-remove-circle form-control-feedback\"><\/span>\n    <\/div>\n    <div style=\"display: none; position: absolute; width: 200px;\">\n      <div data-min=\"0\" data-max=\"10\"><\/div>\n      <span style=\"float: left;\"><\/span>\n      <span style=\"float: right;\"><\/span>\n    <\/div>\n  <\/td>\n<\/tr>","data":[["67","69","68","70","66"],["Site II-10 Tecumseh Phase II Business Park","Site II-12 Tecumseh Phase II Business Park","Site II-11 Tecumseh Phase II Business Park","Site II-8 Tecumseh Phase II Business Park","Site I-1 Tecumseh Phase I Business Park"],[29.9672727272727,29.9672727272727,29.9672727272727,29.9672727272727,29.9672727272727],[153.679992676,153.679992676,153.679992676,153.679992676,153.679992676],[["petroleum products","benzo(a)pyrene","chromium","indeno(1,2,3-CD)pyrene","arsenic","lead","dibenz[a,h]anthracene","benzo(a)anthracene","benzo(b)fluoranthene"],["lead","benzo(a)anthracene","mercury","benzo(a)pyrene","petroleum products","indeno(1,2,3-CD)pyrene","dibenz[a,h]anthracene","benzo(b)fluoranthene","arsenic"],["indeno(1,2,3-CD)pyrene","benzo(a)anthracene","arsenic","benzo(a)pyrene","benzo(b)fluoranthene","petroleum products","lead","polychlorinated biphenyls (PCB)","dibenz[a,h]anthracene","chromium"],["dibenz[a,h]anthracene","petroleum products","arsenic","benzo(b)fluoranthene","indeno(1,2,3-CD)pyrene","lead","benzo(a)anthracene","benzo(a)pyrene"],["indeno(1,2,3-CD)pyrene","lead","sodium","cyanides(soluble cyanide salts)","barium","benzo(a)pyrene","mercury","benzo(b)fluoranthene","iron","magnesium","arsenic","benzo(a)anthracene","chromium","dibenz[a,h]anthracene","manganese"]],["BCP","BCP","BCP","BCP","BCP"],[9,9,9,9,9],["J","J","J","J","J"],["C ","C ","A ","A ","C "],[[[[-78.8523092917347,42.8287272165238],[-78.8518888300822,42.8278098485027],[-78.8518989410997,42.827804508021],[-78.8516392026389,42.8272246070903],[-78.8514234625181,42.8268502253299],[-78.8513587153233,42.826721070322],[-78.85135636326,42.826715930103],[-78.8512820243427,42.8265511267171],[-78.8510478520106,42.8260316699662],[-78.8497304168234,42.8231090711717],[-78.8495794052232,42.8227738067862],[-78.8495969872932,42.8227720509614],[-78.8494359026582,42.8224239481684],[-78.8494147128118,42.8224262263847],[-78.8493701566502,42.8223313220841],[-78.8493944660853,42.8223230338779],[-78.8492071109312,42.82190570718],[-78.8491771987112,42.8219112644462],[-78.84911065239,42.8217680487963],[-78.8489869920457,42.8215076635212],[-78.8489996748042,42.8215042042109],[-78.8488794476397,42.8212294053201],[-78.8484751120503,42.8204632450257],[-78.848218673293,42.8199863964793],[-78.846280219498,42.8157448173966],[-78.8462773066943,42.8157384486318],[-78.8465260096,42.8156747637056],[-78.8466170719562,42.8156514453749],[-78.8480303832581,42.8152895277935],[-78.8486495871072,42.816643748187],[-78.8514698673597,42.8159262187086],[-78.8530172015018,42.8193255355528],[-78.8533455211361,42.819244178396],[-78.8535875184405,42.819775776545],[-78.8535877073552,42.8197761929069],[-78.8534754293052,42.8198039824604],[-78.8531822327849,42.8198765510662],[-78.8531840477407,42.8198805321195],[-78.8554772333786,42.8249103035991],[-78.8554790041809,42.8249141883926],[-78.8555916132542,42.8251611550028],[-78.8555261574751,42.8254493812257],[-78.8567751885,42.828184333919],[-78.8572725849262,42.8280569406983],[-78.8575101643543,42.8285721875765],[-78.8573636558382,42.8286085529453],[-78.8556786186405,42.8290265742092],[-78.8555019847073,42.8290703916388],[-78.8558736019816,42.8298894635646],[-78.8545147426585,42.8302418876673],[-78.8545996005221,42.8304121715375],[-78.8531895227655,42.8307720218943],[-78.8530199762659,42.8304214563497],[-78.8528863122544,42.8301454928462],[-78.8524701965311,42.829285694858],[-78.8524096178436,42.8291605196282],[-78.8523092917347,42.8287272165238]],[[-78.8522873987613,42.8182115636098],[-78.8522528528933,42.8181426526844],[-78.8518566763761,42.8182395103392],[-78.8520450898998,42.8186153423461],[-78.8524412672892,42.8185184831426],[-78.8522873987613,42.8182115636098]]],[[[-78.8523092917347,42.8287272165238],[-78.8518888300822,42.8278098485027],[-78.8518989410997,42.827804508021],[-78.8516392026389,42.8272246070903],[-78.8514234625181,42.8268502253299],[-78.8513587153233,42.826721070322],[-78.85135636326,42.826715930103],[-78.8512820243427,42.8265511267171],[-78.8510478520106,42.8260316699662],[-78.8497304168234,42.8231090711717],[-78.8495794052232,42.8227738067862],[-78.8495969872932,42.8227720509614],[-78.8494359026582,42.8224239481684],[-78.8494147128118,42.8224262263847],[-78.8493701566502,42.8223313220841],[-78.8493944660853,42.8223230338779],[-78.8492071109312,42.82190570718],[-78.8491771987112,42.8219112644462],[-78.84911065239,42.8217680487963],[-78.8489869920457,42.8215076635212],[-78.8489996748042,42.8215042042109],[-78.8488794476397,42.8212294053201],[-78.8484751120503,42.8204632450257],[-78.848218673293,42.8199863964793],[-78.846280219498,42.8157448173966],[-78.8462773066943,42.8157384486318],[-78.8465260096,42.8156747637056],[-78.8466170719562,42.8156514453749],[-78.8480303832581,42.8152895277935],[-78.8486495871072,42.816643748187],[-78.8514698673597,42.8159262187086],[-78.8530172015018,42.8193255355528],[-78.8533455211361,42.819244178396],[-78.8535875184405,42.819775776545],[-78.8535877073552,42.8197761929069],[-78.8534754293052,42.8198039824604],[-78.8531822327849,42.8198765510662],[-78.8531840477407,42.8198805321195],[-78.8554772333786,42.8249103035991],[-78.8554790041809,42.8249141883926],[-78.8555916132542,42.8251611550028],[-78.8555261574751,42.8254493812257],[-78.8567751885,42.828184333919],[-78.8572725849262,42.8280569406983],[-78.8575101643543,42.8285721875765],[-78.8573636558382,42.8286085529453],[-78.8556786186405,42.8290265742092],[-78.8555019847073,42.8290703916388],[-78.8558736019816,42.8298894635646],[-78.8545147426585,42.8302418876673],[-78.8545996005221,42.8304121715375],[-78.8531895227655,42.8307720218943],[-78.8530199762659,42.8304214563497],[-78.8528863122544,42.8301454928462],[-78.8524701965311,42.829285694858],[-78.8524096178436,42.8291605196282],[-78.8523092917347,42.8287272165238]],[[-78.8522873987613,42.8182115636098],[-78.8522528528933,42.8181426526844],[-78.8518566763761,42.8182395103392],[-78.8520450898998,42.8186153423461],[-78.8524412672892,42.8185184831426],[-78.8522873987613,42.8182115636098]]],[[[-78.8523092917347,42.8287272165238],[-78.8518888300822,42.8278098485027],[-78.8518989410997,42.827804508021],[-78.8516392026389,42.8272246070903],[-78.8514234625181,42.8268502253299],[-78.8513587153233,42.826721070322],[-78.85135636326,42.826715930103],[-78.8512820243427,42.8265511267171],[-78.8510478520106,42.8260316699662],[-78.8497304168234,42.8231090711717],[-78.8495794052232,42.8227738067862],[-78.8495969872932,42.8227720509614],[-78.8494359026582,42.8224239481684],[-78.8494147128118,42.8224262263847],[-78.8493701566502,42.8223313220841],[-78.8493944660853,42.8223230338779],[-78.8492071109312,42.82190570718],[-78.8491771987112,42.8219112644462],[-78.84911065239,42.8217680487963],[-78.8489869920457,42.8215076635212],[-78.8489996748042,42.8215042042109],[-78.8488794476397,42.8212294053201],[-78.8484751120503,42.8204632450257],[-78.848218673293,42.8199863964793],[-78.846280219498,42.8157448173966],[-78.8462773066943,42.8157384486318],[-78.8465260096,42.8156747637056],[-78.8466170719562,42.8156514453749],[-78.8480303832581,42.8152895277935],[-78.8486495871072,42.816643748187],[-78.8514698673597,42.8159262187086],[-78.8530172015018,42.8193255355528],[-78.8533455211361,42.819244178396],[-78.8535875184405,42.819775776545],[-78.8535877073552,42.8197761929069],[-78.8534754293052,42.8198039824604],[-78.8531822327849,42.8198765510662],[-78.8531840477407,42.8198805321195],[-78.8554772333786,42.8249103035991],[-78.8554790041809,42.8249141883926],[-78.8555916132542,42.8251611550028],[-78.8555261574751,42.8254493812257],[-78.8567751885,42.828184333919],[-78.8572725849262,42.8280569406983],[-78.8575101643543,42.8285721875765],[-78.8573636558382,42.8286085529453],[-78.8556786186405,42.8290265742092],[-78.8555019847073,42.8290703916388],[-78.8558736019816,42.8298894635646],[-78.8545147426585,42.8302418876673],[-78.8545996005221,42.8304121715375],[-78.8531895227655,42.8307720218943],[-78.8530199762659,42.8304214563497],[-78.8528863122544,42.8301454928462],[-78.8524701965311,42.829285694858],[-78.8524096178436,42.8291605196282],[-78.8523092917347,42.8287272165238]],[[-78.8522873987613,42.8182115636098],[-78.8522528528933,42.8181426526844],[-78.8518566763761,42.8182395103392],[-78.8520450898998,42.8186153423461],[-78.8524412672892,42.8185184831426],[-78.8522873987613,42.8182115636098]]],[[[-78.8523092917347,42.8287272165238],[-78.8518888300822,42.8278098485027],[-78.8518989410997,42.827804508021],[-78.8516392026389,42.8272246070903],[-78.8514234625181,42.8268502253299],[-78.8513587153233,42.826721070322],[-78.85135636326,42.826715930103],[-78.8512820243427,42.8265511267171],[-78.8510478520106,42.8260316699662],[-78.8497304168234,42.8231090711717],[-78.8495794052232,42.8227738067862],[-78.8495969872932,42.8227720509614],[-78.8494359026582,42.8224239481684],[-78.8494147128118,42.8224262263847],[-78.8493701566502,42.8223313220841],[-78.8493944660853,42.8223230338779],[-78.8492071109312,42.82190570718],[-78.8491771987112,42.8219112644462],[-78.84911065239,42.8217680487963],[-78.8489869920457,42.8215076635212],[-78.8489996748042,42.8215042042109],[-78.8488794476397,42.8212294053201],[-78.8484751120503,42.8204632450257],[-78.848218673293,42.8199863964793],[-78.846280219498,42.8157448173966],[-78.8462773066943,42.8157384486318],[-78.8465260096,42.8156747637056],[-78.8466170719562,42.8156514453749],[-78.8480303832581,42.8152895277935],[-78.8486495871072,42.816643748187],[-78.8514698673597,42.8159262187086],[-78.8530172015018,42.8193255355528],[-78.8533455211361,42.819244178396],[-78.8535875184405,42.819775776545],[-78.8535877073552,42.8197761929069],[-78.8534754293052,42.8198039824604],[-78.8531822327849,42.8198765510662],[-78.8531840477407,42.8198805321195],[-78.8554772333786,42.8249103035991],[-78.8554790041809,42.8249141883926],[-78.8555916132542,42.8251611550028],[-78.8555261574751,42.8254493812257],[-78.8567751885,42.828184333919],[-78.8572725849262,42.8280569406983],[-78.8575101643543,42.8285721875765],[-78.8573636558382,42.8286085529453],[-78.8556786186405,42.8290265742092],[-78.8555019847073,42.8290703916388],[-78.8558736019816,42.8298894635646],[-78.8545147426585,42.8302418876673],[-78.8545996005221,42.8304121715375],[-78.8531895227655,42.8307720218943],[-78.8530199762659,42.8304214563497],[-78.8528863122544,42.8301454928462],[-78.8524701965311,42.829285694858],[-78.8524096178436,42.8291605196282],[-78.8523092917347,42.8287272165238]],[[-78.8522873987613,42.8182115636098],[-78.8522528528933,42.8181426526844],[-78.8518566763761,42.8182395103392],[-78.8520450898998,42.8186153423461],[-78.8524412672892,42.8185184831426],[-78.8522873987613,42.8182115636098]]],[[[-78.8523092917347,42.8287272165238],[-78.8518888300822,42.8278098485027],[-78.8518989410997,42.827804508021],[-78.8516392026389,42.8272246070903],[-78.8514234625181,42.8268502253299],[-78.8513587153233,42.826721070322],[-78.85135636326,42.826715930103],[-78.8512820243427,42.8265511267171],[-78.8510478520106,42.8260316699662],[-78.8497304168234,42.8231090711717],[-78.8495794052232,42.8227738067862],[-78.8495969872932,42.8227720509614],[-78.8494359026582,42.8224239481684],[-78.8494147128118,42.8224262263847],[-78.8493701566502,42.8223313220841],[-78.8493944660853,42.8223230338779],[-78.8492071109312,42.82190570718],[-78.8491771987112,42.8219112644462],[-78.84911065239,42.8217680487963],[-78.8489869920457,42.8215076635212],[-78.8489996748042,42.8215042042109],[-78.8488794476397,42.8212294053201],[-78.8484751120503,42.8204632450257],[-78.848218673293,42.8199863964793],[-78.846280219498,42.8157448173966],[-78.8462773066943,42.8157384486318],[-78.8465260096,42.8156747637056],[-78.8466170719562,42.8156514453749],[-78.8480303832581,42.8152895277935],[-78.8486495871072,42.816643748187],[-78.8514698673597,42.8159262187086],[-78.8530172015018,42.8193255355528],[-78.8533455211361,42.819244178396],[-78.8535875184405,42.819775776545],[-78.8535877073552,42.8197761929069],[-78.8534754293052,42.8198039824604],[-78.8531822327849,42.8198765510662],[-78.8531840477407,42.8198805321195],[-78.8554772333786,42.8249103035991],[-78.8554790041809,42.8249141883926],[-78.8555916132542,42.8251611550028],[-78.8555261574751,42.8254493812257],[-78.8567751885,42.828184333919],[-78.8572725849262,42.8280569406983],[-78.8575101643543,42.8285721875765],[-78.8573636558382,42.8286085529453],[-78.8556786186405,42.8290265742092],[-78.8555019847073,42.8290703916388],[-78.8558736019816,42.8298894635646],[-78.8545147426585,42.8302418876673],[-78.8545996005221,42.8304121715375],[-78.8531895227655,42.8307720218943],[-78.8530199762659,42.8304214563497],[-78.8528863122544,42.8301454928462],[-78.8524701965311,42.829285694858],[-78.8524096178436,42.8291605196282],[-78.8523092917347,42.8287272165238]],[[-78.8522873987613,42.8182115636098],[-78.8522528528933,42.8181426526844],[-78.8518566763761,42.8182395103392],[-78.8520450898998,42.8186153423461],[-78.8524412672892,42.8185184831426],[-78.8522873987613,42.8182115636098]]]],[0,4,5,5,10]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th> <\/th>\n      <th>Program.Facility.Name<\/th>\n      <th>precip<\/th>\n      <th>ASSESSACRE<\/th>\n      <th>Contaminants<\/th>\n      <th>Program.Type<\/th>\n      <th>DEC.Region<\/th>\n      <th>Control.Code<\/th>\n      <th>Site.Class<\/th>\n      <th>geometry<\/th>\n      <th>Score<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"autoWidth":true,"columnDefs":[{"className":"dt-right","targets":[2,3,6,10]},{"orderable":false,"targets":0}],"order":[],"orderClasses":false,"orderCellsTop":true,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script></p>
 </div>
 <div id="conclusions" class="section level1">
 <h1>Conclusions</h1>
-<p>Although this tool is unfinished it is promising. The flexibility of this tool will allow it to go beyond the example given here. Another possible use in consideration is identifying locations in a greenhouse with least amount of wind, light, and temperature variability. A major drawback is that this code as it stands is computationally intensive and prohibitive for use on personal computers. A solution to this would be to optimize the algorithms and/or host on a server.</p>
+<p>Although this tool is in very early stages it is promising. The flexibility of this tool will allow it to go beyond the example given here. Another possible use in consideration is identifying locations in a greenhouse with least amount of wind, light, and temperature variability. A major drawback is that this code as it stands is computationally intensive and prohibitive for use on personal computers. A solution to this would be to optimize the algorithms and/or host on a server.</p>
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>
