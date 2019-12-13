@@ -451,7 +451,7 @@ score.calc<-function(rowprime,rowtest){
 
 ```
 
-Itterate over every possible combination and combine into a list of each sites best matches. This is defined
+Iterate over every possible combination and combine into a list of each sites best matches. This is defined
 as the sites where their scores are the lowest when added together.
 ```{r itterate, eval=FALSE}
 
@@ -500,6 +500,10 @@ best
 
 # Results
 
+The leaflet map and table show the sites that are most similar based on the selected variable
+fields. In the table to the far right you can see the scores of each site relative to the first
+site. The higher the score the more different they are. Factors and text are evaluated as 0 if they
+are the same or 1 if they are different.
 
 ```{r actual_run,  echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -512,24 +516,28 @@ library(nngeo)#st_nn
 library(leaflet)
 library(knitr)
 library(DT)
-library(xtable)
 library(lwgeom)
 library(FedData)
 library(raster)
 library(plyr)
-library(raster)
 
-####user input data (demo below) would like to add in soils and climate data but for now KISS
+
+####user input data (demo below) 
+
+
+####uncomment if missing this data
+#Note this is only parcel point data not shape data. Some fields may need to be modified to use
+#point data again.
 ##if zip unzip else
 # temp <- tempfile()
 # download.file("http://gis.ny.gov/gisdata/fileserver/?DSID=1300&file=Erie-Tax-Parcels-Centroid-Points-SHP.zip",temp)
 # unzip(temp, exdir="data/Erie")
 #shapeobj1<-  st_read("data/Erie/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
 # unlink(temp)
-shapeobj1<- sf::st_read("data/eriecounty_parcels_2019_1119/eriecounty_parcels_1119.shp", quiet=TRUE)
+shapeobj1<- sf::st_read("data_up/eriecounty_parcels_2019_1119/eriecounty_parcels_1119.shp", quiet=TRUE)
 
 #download.file("https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&sorting=true","data/points.csv")
-pointcoords<- read.csv("data/points.csv")
+pointcoords<- read.csv("data_up/points.csv")
 
 
 shp<-st_make_valid(shapeobj1)
@@ -540,7 +548,7 @@ point_trn<-st_as_sf(pointcoords,coords=c("Longitude","Latitude")) %>%
   st_crop(st_bbox(shp)) 
 
 
-gc(full=TRUE, verbose=FALSE)
+invisible(gc(full=TRUE, verbose=FALSE))
 ####join data to intersecting objects must have shp first or geometry will be lost because
 #multipolygon does not behave like polygon in st_contains where prepared=TRUE
   ###This would be followed by additional data sets in a for loop
@@ -551,7 +559,7 @@ shapeobj2<-st_join(shp,point_trn,join=st_contains) %>%
   aggregate( by=list(.$Program.Facility.Name),FUN=unique,do_union=TRUE) %>% aggregate(by=list(.$GlobalID),FUN=unique,do_union=TRUE, join=st_instersects)
 
 rm(shapeobj1, shp, point_trn, pointcoords)
-gc(full=TRUE, verbose=FALSE)
+invisible(gc(full=TRUE, verbose=FALSE))
 
 #get percp data
 GHCN.prcp <- get_ghcn_daily(template = shapeobj2,
@@ -623,7 +631,7 @@ shapeobj_trim<-st_join(shapeobj2,ghcn_pts,join=st_nn,k=1, progress=FALSE) %>%
   
 
 rm(shapeobj2, prcp,ghcn_pts,GHCN.prcp, ned_dat)
-gc(full=TRUE, verbose=FALSE)
+invisible(gc(full=TRUE, verbose=FALSE))
 ####user chooses number of sites desired "n"
 number=5
 
@@ -692,7 +700,8 @@ possible_n<- foreach(r=1:nrow(shapeobj_trim))%dopar%{
   }
   
   x_ret<-head(x_ret[order(x_ret$Score),],n=number)
-  gc(verbose=FALSE)
+  
+  invisible(gc(verbose=FALSE))
   return(x_ret)
 }
 
@@ -705,7 +714,7 @@ minimum<-foreach(i=1:length(possible_n),.combine=c)%dopar%{
   } %>% 
   min()
 
-gc()
+invisible(gc(verbose = FALSE))
 
 ####generate a list of best combinations
 best<-foreach(i=1:length(possible_n))%dopar%{
@@ -715,7 +724,7 @@ best<-foreach(i=1:length(possible_n))%dopar%{
 } %>% 
   compact()
 
-gc(full=TRUE, verbose=FALSE)
+invisible(gc(full=TRUE, verbose=FALSE))
   ###the resulting combinations
 ####generated site list displayed in leaflet map and table 
   ### downloadable option could be nice too.
@@ -730,8 +739,7 @@ leaflet() %>%
 
 datatable(first,
           filter = 'top', options = list(
-            pageLength = number, autoWidth = TRUE,
-            caption="This is a table of the best matched locations and thier corresponding variables"
+            pageLength = number, scrollx= TRUE
           ))
 
 
@@ -750,6 +758,70 @@ Although this tool is in very early stages it is promising. The flexibility of t
 
 Eberhardt, L. L., and J. M. Thomas. 1991. Designing Environmental Field Studies. Ecological Monographs 61:53–73.
 
+R Core Team (2019). R: A language and environment for statistical computing. R Foundation
+for Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.
+
+Pebesma, E., 2018. Simple Features for R: Standardized Support for Spatial Vector Data.
+  The R Journal 10 (1), 439-446, https://doi.org/10.32614/RJ-2018-009
+  
+Pebesma, E.J., R.S. Bivand, 2005. Classes and methods for spatial data in R. R News 5
+  (2), https://cran.r-project.org/doc/Rnews/.
+  
+Hadley Wickham, Romain François, Lionel Henry and Kirill Müller (2019). dplyr: A Grammar
+  of Data Manipulation. R package version 0.8.3. https://CRAN.R-project.org/package=dplyr
+
+Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source Software, 4(43),
+  1686, https://doi.org/10.21105/joss.01686
+
+Microsoft Corporation and Steve Weston (2019). doParallel: Foreach Parallel Adaptor for
+  the 'parallel' Package. R package version 1.0.15.
+  https://CRAN.R-project.org/package=doParallel
+  
+Michael Dorman (2019). nngeo: k-Nearest Neighbor Join for Spatial Data. R package version
+  0.2.9. https://CRAN.R-project.org/package=nngeo
+
+Joe Cheng, Bhaskar Karambelkar and Yihui Xie (2019). leaflet: Create Interactive Web Maps
+  with the JavaScript 'Leaflet' Library. R package version 2.0.3.
+  https://CRAN.R-project.org/package=leaflet
+  
+Yihui Xie (2019). knitr: A General-Purpose Package for Dynamic Report Generation in R. R
+  package version 1.26.
+
+Yihui Xie (2015) Dynamic Documents with R and knitr. 2nd edition. Chapman and Hall/CRC.
+  ISBN 978-1498716963
+
+Yihui Xie (2014) knitr: A Comprehensive Tool for Reproducible Research in R. In Victoria
+  Stodden, Friedrich Leisch and Roger D. Peng, editors, Implementing Reproducible
+  Computational Research. Chapman and Hall/CRC. ISBN 978-1466561595
+ 
+Yihui Xie, Joe Cheng and Xianying Tan (2019). DT: A Wrapper of the JavaScript Library
+  'DataTables'. R package version 0.10. https://CRAN.R-project.org/package=DT
+
+Edzer Pebesma (2019). lwgeom: Bindings to Selected 'liblwgeom' Functions for Simple
+  Features. R package version 0.1-7. https://CRAN.R-project.org/package=lwgeom
+
+R. Kyle Bocinsky (2019). FedData: Functions to Automate Downloading Geospatial Data
+  Available from Several Federated Data Sources. R package version 2.5.7.
+  https://CRAN.R-project.org/package=FedData
+
+Robert J. Hijmans (2019). raster: Geographic Data Analysis and Modeling. R package
+  version 3.0-7. https://CRAN.R-project.org/package=raster
+
+Hadley Wickham (2011). The Split-Apply-Combine Strategy for Data Analysis. Journal of
+  Statistical Software, 40(1), 1-29. URL http://www.jstatsoft.org/v40/i01/.
+
+#Data
+
+Menne, Matthew J., Imke Durre, Bryant Korzeniewski, Shelley McNeal, Kristy Thomas, Xungang Yin, 
+  Steven Anthony, Ron Ray, Russell S. Vose, Byron E.Gleason, and Tamara G. Houston (2012): Global 
+  Historical Climatology Network - Daily (GHCN-Daily), Version 3. NOAA 
+  National Climatic Data Center. doi:10.7289/V5D21VHZ
+  
+https://usgs.gov/
+
 https://data.ny.gov/
 
 http://gis.ny.gov/
+
+Erie County Office Of Geographic Information Services. https://www2.erie.gov/gis 
+  (Parcel data available upon request)
