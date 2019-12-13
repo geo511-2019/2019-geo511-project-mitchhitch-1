@@ -500,7 +500,7 @@ best
 # Results
 
 
-```{r actual_run,  echo=FALSE, message=FALSE, warning=FALSE, results='hide',fig.keep='all'}
+```{r actual_run,  echo=FALSE, message=FALSE, warning=FALSE}
 
 library(sf)
 library(sp)
@@ -524,7 +524,7 @@ library(plyr)
 # unzip(temp, exdir="data/Erie")
 #shapeobj1<-  st_read("data/Erie/Erie_2018_Tax_Parcel_Centroid_Points_SHP.shp")
 # unlink(temp)
-shapeobj1<- sf::st_read("data/eriecounty_parcels_2019_1119/eriecounty_parcels_1119.shp")
+shapeobj1<- sf::st_read("data/eriecounty_parcels_2019_1119/eriecounty_parcels_1119.shp", quiet=TRUE)
 
 #download.file("https://data.ny.gov/api/views/c6ci-rzpg/rows.csv?accessType=DOWNLOAD&sorting=true","data/points.csv")
 pointcoords<- read.csv("data/points.csv")
@@ -534,7 +534,7 @@ shp<-st_make_valid(shapeobj1)
 
 point_trn<-st_as_sf(pointcoords,coords=c("Longitude","Latitude")) %>% 
   st_set_crs(4326) %>%
-  st_transform(st_crs(shp)) %>% 
+  st_transform(st_crs(shp), quiet=TRUE) %>% 
   st_crop(st_bbox(shp)) 
 
 
@@ -546,9 +546,7 @@ gc(full=TRUE, verbose=FALSE)
 
 shapeobj2<-st_join(shp,point_trn,join=st_contains) %>%
   filter(!(is.na(.$Program.Facility.Name))) %>% 
-  aggregate( by=list(.$Program.Facility.Name),FUN=unique,do_union=TRUE) %>% 
-  aggregate(by=.$geometry,FUN=unique,do_union=TRUE)
-
+  aggregate( by=list(.$Program.Facility.Name),FUN=unique,do_union=TRUE) %>% aggregate(by=list(.$GlobalID),FUN=unique,do_union=TRUE, join=st_instersects)
 
 rm(shapeobj1, shp, point_trn, pointcoords)
 gc(full=TRUE, verbose=FALSE)
@@ -579,7 +577,7 @@ gc(full=TRUE, verbose=FALSE)
 # write_sf(ghcn_pts,"ghcn_pts_file.shp")
 
 ##to avoid timely download
-ghcn_pts<-sf::st_read("ghcn_pts_file.shp")
+ghcn_pts<-sf::st_read("ghcn_pts_file.shp", quiet=TRUE)
 
 
 ####User selects columns of interest and fixed value columns (done in shiny app)
@@ -591,7 +589,7 @@ ghcn_pts<-sf::st_read("ghcn_pts_file.shp")
 
 
 ###error here try st_union on above set next
-shapeobj_trim<-st_join(shapeobj2,ghcn_pts,join=st_nn,k=1) %>% 
+shapeobj_trim<-st_join(shapeobj2,ghcn_pts,join=st_nn,k=1, progress=FALSE) %>% 
   dplyr::select(Program.Facility.Name,precip,ASSESSACRE,Contaminants,Program.Type,DEC.Region,Control.Code,Site.Class) %>% 
   filter(ASSESSACRE>0) %>% 
   mutate(Score=0)
@@ -695,17 +693,20 @@ gc(full=TRUE, verbose=FALSE)
 ####generated site list displayed in leaflet map and table 
   ### downloadable option could be nice too.
 
-print("best possible combination of n sites")
-best[[1]]
 first<-st_transform(best[[1]],'+proj=longlat +datum=WGS84')
+
+
 leaflet() %>% 
   addTiles() %>%
-  addPolygons(data = first, popup=first$Program.Facility.Name)
+  addPolygons(data = first, popup=first$Program.Facility.Name) %>% 
+  addTitle("Map of best matched locations", text, color = "black", fontSize = "20px",
+           fontFamily = "serif", leftPosition = 50, topPosition = 2)
 ####try data tables package
 
 datatable(first,
           filter = 'top', options = list(
-            pageLength = number, autoWidth = TRUE
+            pageLength = number, autoWidth = TRUE,
+            caption="This is a table of the best matched locations and thier corresponding variables"
           ))
 
 
