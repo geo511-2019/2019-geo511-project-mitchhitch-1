@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 # Introduction
 
+
 Replicated experiments are well known to have the highest power for statistical inference. However, this has rarely been properly implemented in field studies and numerous techniques have been devised to alleviate this challenge while avoiding psuedoreplication (Eberhardt and Thomas 1991). Due to the power (lower typeII error) of large replicate studies it would be desirable to develop a method for conducting such studies in field experiments so as to derive stronger inferences. Higher power is of equal interest to Bayesian analysis as it is to frequentest but discussion of either is outside the scope of this work save that it benefits all. The purpose of this project is to develop a tool for alleviating the first step which is identifying plausible replicate sites by using existing locations. It is possible to deal with uncontrolled variables through large numbers of replicates but the more uncontrolled and higher variation the variables are the more replicates are needed. This tool uses the large amounts of environmental data widely available to filter through locations and identify a desired number of replicates which are most similar given a set of variables. This tool is designed to be dynamic by allowing for multiple spatial data sets to be imported and desired variables to be filtered for. 
 
 
@@ -516,6 +517,7 @@ library(lwgeom)
 library(FedData)
 library(raster)
 library(plyr)
+library(raster)
 
 ####user input data (demo below) would like to add in soils and climate data but for now KISS
 ##if zip unzip else
@@ -551,33 +553,57 @@ shapeobj2<-st_join(shp,point_trn,join=st_contains) %>%
 rm(shapeobj1, shp, point_trn, pointcoords)
 gc(full=TRUE, verbose=FALSE)
 
-# #get percp data
-# GHCN.prcp <- get_ghcn_daily(template = shapeobj_trim, 
-#                             label = "prcp", 
-#                             elements = c('prcp'))
-# 
-# 
-# #average location percip data (could also group to monthly averages etc)
-# ghcn_dat<-GHCN.prcp$tabular %>%
-#     lapply("[[", "PRCP") %>% 
-#     do.call("rbind",.) %>% 
-#     gather(day, precip, -STATION, -YEAR, -MONTH) %>%
-#     filter(!is.na(precip)) %>% 
-#     dplyr::select(-YEAR, -MONTH,-day) %>% 
-#     aggregate(by=list(.$STATION),FUN=mean) %>% 
+#get percp data
+GHCN.prcp <- get_ghcn_daily(template = shapeobj2,
+                            label = "erie",
+                            elements = c('TAVG','PRCP','TMAX','TMIN','TSUN'),
+                            force.redo=F,years=1999:2019)
+
+#average location percip data (could also group to monthly averages etc)
+prcp<-GHCN.prcp$tabular %>%
+    lapply("[[", "PRCP") %>%
+    do.call("rbind",.) %>%
+    gather(day, PRCP,-STATION, -YEAR, -MONTH) %>%
+    filter(!is.na(PRCP)) %>%
+    dplyr::select(-YEAR, -MONTH,-day) %>%
+    aggregate(by=list(.$STATION),FUN=mean) %>%
+    dplyr::select(-STATION)
+
+
+
+
+#turns out most of this isnt availabel form erie county. 
+# tavg<-GHCN.prcp$tabular %>%
+#     lapply("[[", "TAVG") %>%
+#     do.call("rbind",.) %>%
+#     gather(day, TAVG,-STATION, -YEAR, -MONTH) %>%
+#     filter(!is.na(TAVG)) %>%
+#     dplyr::select(-YEAR, -MONTH,-day) %>%
+#     aggregate(by=list(.$STATION),FUN=mean) %>%
 #     dplyr::select(-STATION)
-# 
-# #reassign points to monthly averages
-# ghcn_pts<-st_as_sf(GHCN.prcp$spatial,
-#                    coords=c(GHCN.prcp$spatial@coords[,2],GHCN.prcp$spatial@coords[,1])
-#                   ) %>% 
-#   st_transform(crs(shapeobj_trim)) %>% 
-#   left_join(ghcn_dat,by=c("ID"="Group.1"),)
-# 
+
+
+
+
+
+#reassign points to monthly averages
+ghcn_pts<-st_as_sf(GHCN.prcp$spatial,
+                   coords=c(GHCN.prcp$spatial@coords[,2],GHCN.prcp$spatial@coords[,1])
+                  ) %>%
+  st_transform(crs(shapeobj2)) %>%
+  left_join(prcp,by=c("ID"="Group.1"),)
+
 # write_sf(ghcn_pts,"ghcn_pts_file.shp")
 
+ned_dat<-get_ned(template=shapeobj2, label="ned_elev", 
+    res="1", force.redo = F)
+
+
+
+
 ##to avoid timely download
-ghcn_pts<-sf::st_read("ghcn_pts_file.shp", quiet=TRUE)
+# ghcn_pts<-sf::st_read("ghcn_pts_file.shp", quiet=TRUE)
+# 
 
 
 ####User selects columns of interest and fixed value columns (done in shiny app)
@@ -585,17 +611,18 @@ ghcn_pts<-sf::st_read("ghcn_pts_file.shp", quiet=TRUE)
     ##if fixed then set the fixed value from a list of possible values or factors
       ##this information is then used to filter (should probably have a submit button to avoid continuous run)
 ######DEMO all this here#####
-##also adds in precip data based on closest station
+##also adds in precip data based on closest station ane average elevation
 
 
-###error here try st_union on above set next
 shapeobj_trim<-st_join(shapeobj2,ghcn_pts,join=st_nn,k=1, progress=FALSE) %>% 
-  dplyr::select(Program.Facility.Name,precip,ASSESSACRE,Contaminants,Program.Type,DEC.Region,Control.Code,Site.Class) %>% 
+  dplyr::select(Program.Facility.Name,PRCP,ASSESSACRE,Contaminants,Program.Type,DEC.Region,Control.Code,Site.Class) %>% 
   filter(ASSESSACRE>0) %>% 
-  mutate(Score=0)
+  mutate(Score=0) %>% 
+  mutate(elev=raster::extract(x=ned_dat,y=.,fun=mean))
+
   
 
-rm(shapeobj2, ghcn_dat,ghcn_pts,GHCN.prcp)
+rm(shapeobj2, prcp,ghcn_pts,GHCN.prcp, ned_dat)
 gc(full=TRUE, verbose=FALSE)
 ####user chooses number of sites desired "n"
 number=5
@@ -698,9 +725,7 @@ first<-st_transform(best[[1]],'+proj=longlat +datum=WGS84')
 
 leaflet() %>% 
   addTiles() %>%
-  addPolygons(data = first, popup=first$Program.Facility.Name) %>% 
-  addTitle("Map of best matched locations", text, color = "black", fontSize = "20px",
-           fontFamily = "serif", leftPosition = 50, topPosition = 2)
+  addPolygons(data = first, popup=first$Program.Facility.Name)
 ####try data tables package
 
 datatable(first,
